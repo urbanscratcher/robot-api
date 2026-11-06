@@ -211,6 +211,21 @@ export default function App() {
   }, [startCamera, stopCamera])
 
   const [capture, setCapture] = useState<CaptureState>({ kind: 'idle', message: '' })
+  const [publishingRestartBusy, setPublishingRestartBusy] = useState(false)
+  const restartPublishing = useCallback(async () => {
+    setPublishingRestartBusy(true)
+    setCapture({ kind: 'busy', message: '게시 작업 재시작 중…' })
+    try {
+      const response = await fetch('/api/publishing/restart', { method: 'POST' })
+      setCapture(response.ok
+        ? { kind: 'ok', message: '게시 작업을 중단 후 재개했습니다' }
+        : { kind: 'error', message: `게시 작업 재시작 실패 (${response.status})` })
+    } catch {
+      setCapture({ kind: 'error', message: '게시 작업 재시작 실패 (네트워크)' })
+    } finally {
+      setPublishingRestartBusy(false)
+    }
+  }, [])
   const [publication, setPublication] = useState<PublicationStatus | null>(null)
   const [publicationConnection, setPublicationConnection] = useState<PublicationConnection>('connecting')
 
@@ -476,6 +491,14 @@ export default function App() {
             <button type="button" onClick={restartCamera}>
               <span className="action-icon">↻</span>
               <span>카메라 재시작</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { void restartPublishing() }}
+              disabled={publishingRestartBusy}
+            >
+              <span className="action-icon">↻</span>
+              <span>{publishingRestartBusy ? '게시 재시작 중…' : '게시 재시작'}</span>
             </button>
             </div>
 
