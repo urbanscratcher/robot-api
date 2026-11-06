@@ -453,6 +453,55 @@ body {
 .status-dot.status-denied, .status-dot.status-error { color: #ff6565; background: currentColor; border: 0; }
 
 .admin-controls { display: grid; gap: .65rem; }
+
+/* 로봇 주행 스위치: 켜짐 초록 / 꺼짐 빨강, 아래 줄에 로봇이 실제로 따라왔는지 */
+.robot-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem .9rem;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 1rem;
+  background: rgba(255,255,255,.05);
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.robot-card.is-driving { border-color: rgba(86,226,124,.45); background: rgba(86,226,124,.08); }
+.robot-card.is-stopped { border-color: rgba(255,101,101,.5); background: rgba(255,101,101,.08); }
+.robot-card-text { display: grid; gap: .15rem; min-width: 0; }
+.robot-card-label { color: #8a8a92; font-size: .62rem; font-weight: 800; letter-spacing: .14em; }
+.robot-card strong { font-size: clamp(.9rem, 3dvh, 1.15rem); }
+.robot-card.is-driving strong { color: #8ff0a8; }
+.robot-card.is-stopped strong { color: #ff9a9a; }
+.robot-sync { min-height: 1em; color: #9a9aa2; font-size: clamp(.62rem, 2.1dvh, .75rem); }
+.robot-sync-ok { color: #8ff0a8; }
+.robot-sync-pending { color: #ffd479; }
+.robot-sync-off { color: #ff9a9a; }
+.admin-panel .robot-switch {
+  position: relative;
+  flex: none;
+  width: 4.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: #5a2626;
+  transition: background-color .2s ease;
+}
+.admin-panel .robot-switch[aria-checked="true"] { background: #2f8f4e; }
+.robot-switch-knob {
+  position: absolute;
+  top: .25rem;
+  left: .25rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 .2rem .5rem rgba(0,0,0,.4);
+  transition: transform .2s ease;
+}
+.robot-switch[aria-checked="true"] .robot-switch-knob { transform: translateX(2rem); }
+
 .admin-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; }
 .admin-actions button {
   display: flex;

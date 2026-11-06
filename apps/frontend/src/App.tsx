@@ -22,7 +22,17 @@ type PiezoReading = { level: number; stage: 1 | 2; strength: 'weak' | 'strong' }
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 type HurtStage = 1 | 2
-type RobotStatus = { driving: boolean; online: boolean; updatedAt: string; lastSeenAt: string | null }
+type RobotStatus = {
+  driving: boolean; online: boolean; synced?: boolean; updatedAt: string; lastSeenAt: string | null
+  reported?: 'driving' | 'paused' | null; changedBy?: string; seenMsAgo?: number | null
+}
+
+function agoText(ms: number) {
+  const sec = Math.round(ms / 1000)
+  if (sec < 60) return `${sec}초 전`
+  const min = Math.round(sec / 60)
+  return min < 60 ? `${min}분 전` : `${Math.round(min / 60)}시간 전`
+}
 type HurtVoice = { source: string; text: string; stage: HurtStage }
 
 const HURT_VOICES: HurtVoice[] = [
@@ -150,16 +160,19 @@ export default function App() {
     const load = () => fetch('/api/robot').then((r) => r.ok ? r.json() as Promise<RobotStatus> : null)
       .then((status) => { if (!stopped && status) setRobot(status) }).catch(() => undefined)
     void load()
-    const timer = window.setInterval(load, 3000)  // ESP32 연결 표시(마지막 확인 시각) 갱신
+    const timer = window.setInterval(load, 2000)  // ESP32 연결·반영 표시 갱신
     return () => { stopped = true; window.clearInterval(timer) }
   }, [])
   const toggleRobot = useCallback(async () => {
+    const driving = !(robot?.driving ?? true)
     setRobotBusy(true)
+    // 누르자마자 스위치가 넘어가게 하고, 로봇이 따라오면 "반영됨"으로 바뀐다
+    setRobot((current) => current ? { ...current, driving, synced: false, changedBy: 'panel' } : current)
     try {
       const response = await fetch('/api/robot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ driving: !(robot?.driving ?? true) }),
+        body: JSON.stringify({ driving, source: 'panel' }),
       })
       if (response.ok) setRobot(await response.json() as RobotStatus)
     } catch {
@@ -168,6 +181,13 @@ export default function App() {
       setRobotBusy(false)
     }
   }, [robot?.driving])
+  const robotSync: { kind: 'ok' | 'pending' | 'off'; text: string } = !robot
+    ? { kind: 'pending', text: '' }
+    : !robot.online
+      ? { kind: 'off', text: `로봇 연결 안 됨${robot.seenMsAgo != null ? ` · 마지막 확인 ${agoText(robot.seenMsAgo)}` : ''} · 켜지면 이 설정을 따라요` }
+      : robot.synced
+        ? { kind: 'ok', text: `✓ 로봇에 반영됨${robot.changedBy === 'esp32' ? ' · 로봇 버튼으로 바뀜' : ''}` }
+        : { kind: 'pending', text: '로봇에 전달 중…' }
 
   // ESP32 피에조 충격: 서버(/api/events)가 'hurt'를 보내면 탭한 것처럼 아파한다.
   const [hurtLink, setHurtLink] = useState<'connecting' | 'open' | 'closed'>('connecting')
@@ -463,18 +483,25 @@ export default function App() {
           </div>
 
           <div className="admin-controls">
+            <div className={`robot-card ${robot?.driving ?? true ? 'is-driving' : 'is-stopped'}`}>
+              <div className="robot-card-text">
+                <span className="robot-card-label">로봇 주행</span>
+                <strong>{!robot ? '불러오는 중…' : robot.driving ? '켜짐 · 돌아다니는 중' : '꺼짐 · 멈춰 있음'}</strong>
+                <span className={`robot-sync robot-sync-${robotSync.kind}`}>{robotSync.text}</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                className="robot-switch"
+                aria-checked={robot?.driving ?? false}
+                aria-label="로봇 주행 켜기/끄기"
+                onClick={() => { void toggleRobot() }}
+                disabled={!robot || robotBusy}
+              >
+                <span className="robot-switch-knob" />
+              </button>
+            </div>
             <div className="admin-actions">
-            <button
-              type="button"
-              className={robot?.driving ? 'is-on' : undefined}
-              onClick={() => { void toggleRobot() }}
-              disabled={!robot || robotBusy}
-              aria-pressed={robot?.driving ?? false}
-              title={robot && !robot.online ? 'ESP32가 서버에 접속하지 않고 있어요' : undefined}
-            >
-              <span className="action-icon">{robot?.driving ? '■' : '▶'}</span>
-              <span>주행 {robot ? (robot.driving ? '켜짐' : '꺼짐') : '…'}</span>
-            </button>
             <button
               type="button"
               className={autoCapture ? 'is-on' : undefined}
