@@ -504,13 +504,14 @@ body {
 .hurt-bubble::before {
   content: "";
   position: absolute;
-  z-index: -1;
   left: 66%;
   bottom: clamp(-.62rem, -1.6vmin, -.42rem);
   width: clamp(.9rem, 2.5vmin, 1.35rem);
   aspect-ratio: 1;
   border: var(--bubble-border-width) solid #171717;
   background: #fff;
+  /* 회전 뒤 아래쪽 삼각형만 남겨 본체 안쪽의 겹치는 선을 완전히 숨긴다. */
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
   transform: translateX(-50%) rotate(45deg);
 }
 
