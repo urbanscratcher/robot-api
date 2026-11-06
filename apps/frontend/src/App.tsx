@@ -285,8 +285,8 @@ export default function App() {
   const [publication, setPublication] = useState<PublicationStatus | null>(null)
   const [publicationConnection, setPublicationConnection] = useState<PublicationConnection>('connecting')
 
-  // 취재: 사람을 보면 사진(config의 VISIT.photoDelaysMs, 지금은 1장)을 찍어 /api/observations 로 보내고, 발화가 끝날 때까지 들은 말을
-  // 글자로 바꿔 /api/transcripts 로 보낸다. 이후 published 신호가 올 때까지 사람 인식과 다음 취재를 멈춘다.
+  // 취재: 사람을 보면 사진 촬영과 듣기를 함께 시작한다. 사진은 찍히는 대로 /api/observations 로 보내고,
+  // 말은 발화가 끝나는 대로 글자로 바꿔 /api/transcripts 로 보낸다. 둘 다 끝난 뒤 published 신호를 기다린다.
   const [visit, setVisit] = useState<VisitState>({ phase: 'idle', photos: 0, until: 0 })
   const visitPhaseRef = useRef<VisitState['phase']>('idle')
   const publicationAbortRef = useRef<AbortController | null>(null)
@@ -342,22 +342,29 @@ export default function App() {
       }
     }))
 
-    if (speech) await speech.waitForPause(VISIT.silenceMs, VISIT.noSpeechMs, VISIT.maxListenMs)
-    else await sleep(VISIT.noSpeechMs)
-    const text = speech ? await speech.stop() : ''
-    await Promise.all(photoJobs)
+    const speechJob = (async () => {
+      if (speech) await speech.waitForPause(VISIT.silenceMs, VISIT.noSpeechMs, VISIT.maxListenMs)
+      else await sleep(VISIT.noSpeechMs)
+      const text = speech ? await speech.stop() : ''
 
-    let transcriptResult: string
-    if (!speech) transcriptResult = '음성 인식 미지원'
-    else if (!text) transcriptResult = speech.lastError() === 'not-allowed' ? '마이크 거부' : '말소리 없음'
-    else {
-      try {
-        const response = await sendTranscript(text)
-        transcriptResult = response.ok ? '대화 전송' : `대화 실패 ${response.status}`
-      } catch {
-        transcriptResult = '대화 실패(네트워크)'
+      let result: string
+      if (!speech) result = '음성 인식 미지원'
+      else if (!text) result = speech.lastError() === 'not-allowed' ? '마이크 거부' : '말소리 없음'
+      else {
+        try {
+          const response = await sendTranscript(text)
+          result = response.ok ? '대화 전송' : `대화 실패 ${response.status}`
+        } catch {
+          result = '대화 실패(네트워크)'
+        }
       }
-    }
+      return { text, result }
+    })()
+
+    const [{ text, result: transcriptResult }] = await Promise.all([
+      speechJob,
+      Promise.all(photoJobs),
+    ])
     const allOk = photosSent === VISIT.photoDelaysMs.length && transcriptResult === '대화 전송'
     setCapture({ kind: allOk ? 'ok' : 'error', message: `사진 ${photosSent}/${VISIT.photoDelaysMs.length} · ${transcriptResult}` })
     setLastTranscript(text)
