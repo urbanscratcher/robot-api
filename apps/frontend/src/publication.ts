@@ -25,7 +25,7 @@ type UpdateHandler = (update: PublicationUpdate) => void
 const normalizeStatus = (status: string) => status.trim().toLowerCase().replace(/[\s-]+/g, '_')
 export const isPublished = (status: string) => normalizeStatus(status) === 'published'
 export const isPublicationHandedOff = (status: string) =>
-  ['review_required', 'needs_review', 'ready_for_publish', 'unknown'].includes(normalizeStatus(status))
+  normalizeStatus(status) === 'unknown'
 export const isArticleGenerating = (status: string) =>
   ['ai_generating', 'generating', 'article_generating', 'generating_article'].includes(normalizeStatus(status))
 export const isInstagramPublishing = (status: string) =>
@@ -113,8 +113,8 @@ async function waitForPublication(eventId: string, signal: AbortSignal, onUpdate
       // 재연결 전에 현재 상태를 조회하므로 연결이 끊긴 사이의 published도 놓치지 않는다.
       const current = await getPublication(eventId, signal)
       onUpdate?.({ kind: 'status', publication: current })
-      // 검토 대기부터는 게시 관리자에게 작업이 넘어간 상태다. 외부에서 수동 게시하면 이
-      // 이벤트가 published로 갱신되지 않을 수 있으므로 촬영 단말을 계속 붙잡아 두지 않는다.
+      // 검토 대기는 아직 게시 흐름이 끝난 상태가 아니다. 관리자가 승인한 뒤 이어지는
+      // publishing과 published를 받아야 하므로 SSE 연결을 계속 유지한다.
       if (isTerminalForCapture(current.status)) return current
 
       const response = await fetch(`${PUBLICATIONS_URL}/${encodeURIComponent(eventId)}/events`, {
@@ -153,8 +153,8 @@ async function waitForPublication(eventId: string, signal: AbortSignal, onUpdate
   throw signal.reason
 }
 
-// 한 번의 취재에서 사진별 eventId가 생긴다. 게시 완료 또는 관리자 검토 단계로 넘어가면
-// 촬영 단말의 역할은 끝났으므로 나머지 연결을 닫는다.
+// 한 번의 취재에서 사진별 eventId가 생긴다. 게시 완료(또는 후속 상태를 확인할 수 없는
+// unknown)에 도달하면 촬영 단말의 역할이 끝났으므로 나머지 연결을 닫는다.
 export async function waitForAnyPublication(eventIds: string[], signal?: AbortSignal, onUpdate?: UpdateHandler) {
   if (!eventIds.length) throw new Error('no publication event')
   const controller = new AbortController()
