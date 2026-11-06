@@ -11,6 +11,9 @@ export const OBSERVATION_TOKEN = import.meta.env.VITE_OBSERVATION_TOKEN ?? ''
 // 휴대폰에서 글자로 바꾼 대화를 보낼 주소. 몸통: { "text": "..." }  (토큰은 위와 같음)
 export const TRANSCRIPT_URL = '/api/transcripts'
 
+// 기사 작성/인스타그램 게시 상태와 SSE 알림을 조회하는 기본 경로.
+export const PUBLICATIONS_URL = '/api/mobile/publications'
+
 // 사람 인식. 사람이 연속으로 보이면 취재를 시작한다.
 export const AUTO_CAPTURE = {
   intervalMs: 500,        // 0.5초마다 카메라를 본다
@@ -19,11 +22,10 @@ export const AUTO_CAPTURE = {
   arriveChecks: 2,        // 연속 2번(약 1초) 보여야 시작
 }
 
-// 취재 한 번: 사진 3장(시작, 4초, 8초) + 20초 듣기, 끝나고 1분은 사람을 봐도 쉰다.
+// 취재 한 번: 사진 3장(시작, 4초, 8초) + 20초 듣기. 이후 게시 완료까지 다음 취재를 멈춘다.
 export const VISIT = {
   photoDelaysMs: [0, 4000, 8000],
   listenMs: 20000,
-  cooldownMs: 60000,
 }
 
 // eventId 앞부분: camera-1-20261106-001

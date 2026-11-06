@@ -5,9 +5,16 @@ import { AUTO_CAPTURE, OBSERVATION_TOKEN, OBSERVATION_URL, VISIT } from './confi
 import { usePersonDetector } from './hooks/usePersonDetector'
 import { sendObservation, sendTranscript } from './observation'
 import { startListening, type SpeechSession } from './speech'
+import {
+  isPublicationProblem,
+  publicationStage,
+  waitForAnyPublication,
+  type PublicationConnection,
+  type PublicationStatus,
+} from './publication'
 
 type CaptureState = { kind: 'idle' | 'busy' | 'ok' | 'error'; message: string }
-type VisitState = { phase: 'idle' | 'running' | 'cooldown'; photos: number; until: number }
+type VisitState = { phase: 'idle' | 'running' | 'processing'; photos: number; until: number; eventId?: string }
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 const VOICE_FILES = [
@@ -135,11 +142,14 @@ export default function App() {
   }, [startCamera, stopCamera])
 
   const [capture, setCapture] = useState<CaptureState>({ kind: 'idle', message: '' })
+  const [publication, setPublication] = useState<PublicationStatus | null>(null)
+  const [publicationConnection, setPublicationConnection] = useState<PublicationConnection>('connecting')
 
   // 취재: 사람을 보면 사진 3장(0·4·8초)을 찍어 /api/observations 로 보내고, 20초 동안 들은 말을
-  // 글자로 바꿔 /api/transcripts 로 보낸다. 끝나면 1분 동안은 사람을 봐도 아무것도 하지 않는다.
+  // 글자로 바꿔 /api/transcripts 로 보낸다. 이후 published 신호가 올 때까지 사람 인식과 다음 취재를 멈춘다.
   const [visit, setVisit] = useState<VisitState>({ phase: 'idle', photos: 0, until: 0 })
   const visitPhaseRef = useRef<VisitState['phase']>('idle')
+  const publicationAbortRef = useRef<AbortController | null>(null)
   const [, setClockTick] = useState(0)
   useEffect(() => {
     if (visit.phase === 'idle') return
@@ -154,6 +164,7 @@ export default function App() {
       return
     }
     visitPhaseRef.current = 'running'
+    setPublication(null)
     const startedAt = Date.now()
     setVisit({ phase: 'running', photos: 0, until: startedAt + VISIT.listenMs })
     setCapture({ kind: 'busy', message: '' })
@@ -163,12 +174,14 @@ export default function App() {
     try { speech = startListening('ko-KR') } catch { speech = null }
 
     let photosSent = 0
+    const publicationEventIds: string[] = []
     const photoJobs = VISIT.photoDelaysMs.map((delay) => sleep(delay).then(async () => {
       const photo = await captureFrame()
       if (!photo) return
       try {
-        const { response } = await sendObservation({ image: photo })
+        const { response, eventId } = await sendObservation({ image: photo })
         if (response.ok) {
+          publicationEventIds.push(eventId)
           photosSent += 1
           setVisit((current) => ({ ...current, photos: photosSent }))
         }
@@ -196,10 +209,28 @@ export default function App() {
     setCapture({ kind: allOk ? 'ok' : 'error', message: `사진 ${photosSent}/${VISIT.photoDelaysMs.length} · ${transcriptResult}` })
     setLastTranscript(text)
 
-    visitPhaseRef.current = 'cooldown'
-    const until = Date.now() + VISIT.cooldownMs
-    setVisit({ phase: 'cooldown', photos: photosSent, until })
-    await sleep(VISIT.cooldownMs)
+    if (!publicationEventIds.length) {
+      visitPhaseRef.current = 'idle'
+      setVisit({ phase: 'idle', photos: 0, until: 0 })
+      return
+    }
+
+    visitPhaseRef.current = 'processing'
+    setVisit({ phase: 'processing', photos: photosSent, until: 0, eventId: publicationEventIds[0] })
+    const controller = new AbortController()
+    publicationAbortRef.current = controller
+    try {
+      const published = await waitForAnyPublication(publicationEventIds, controller.signal, (update) => {
+        if (update.kind === 'connection') setPublicationConnection(update.connection)
+        else setPublication(update.publication)
+      })
+      setCapture({ kind: 'ok', message: `게시 완료 · ${published.eventId}` })
+    } catch {
+      if (!controller.signal.aborted) setCapture({ kind: 'error', message: '게시 확인 연결 실패' })
+      return
+    } finally {
+      if (publicationAbortRef.current === controller) publicationAbortRef.current = null
+    }
     visitPhaseRef.current = 'idle'
     setVisit({ phase: 'idle', photos: 0, until: 0 })
   }, [captureFrame, startCamera])
@@ -207,13 +238,21 @@ export default function App() {
   const [lastTranscript, setLastTranscript] = useState('')
   const [autoCapture, setAutoCapture] = useState(true)
   const onPersonPresent = useCallback(() => { void runVisit() }, [runVisit])
-  const detector = usePersonDetector(videoRef, autoCapture && status === 'active', AUTO_CAPTURE, onPersonPresent)
+  const detector = usePersonDetector(
+    videoRef,
+    autoCapture && status === 'active' && visit.phase === 'idle',
+    AUTO_CAPTURE,
+    onPersonPresent,
+  )
 
   const secondsLeft = Math.max(0, Math.ceil((visit.until - Date.now()) / 1000))
+  const publicationText = publication
+    ? `${publicationStage(publication)}${publication.error ? ` · ${publication.error}` : ''}`
+    : publicationConnection === 'reconnecting' ? '상태 연결 재시도 중' : '게시 상태 연결 중'
   const statusText = visit.phase === 'running'
     ? `취재 중 · 사진 ${visit.photos}/${VISIT.photoDelaysMs.length} · 듣기 ${secondsLeft}초`
-    : visit.phase === 'cooldown'
-      ? `${capture.message} · 쉬는 중 ${secondsLeft}초`
+    : visit.phase === 'processing'
+      ? publicationText
       : capture.message
 
   useEffect(() => {
@@ -223,6 +262,7 @@ export default function App() {
       return audio
     })
     return () => {
+      publicationAbortRef.current?.abort()
       if (glitchTimerRef.current) window.clearTimeout(glitchTimerRef.current)
       audioPlayersRef.current.forEach((audio) => {
         audio.pause()
@@ -263,6 +303,17 @@ export default function App() {
       {glitching && <div key={glitchKey} className="glitch-overlay" aria-hidden="true" />}
       <video ref={videoRef} className={`camera-video${adminOpen ? ' camera-preview' : ''}`} playsInline muted autoPlay />
       {import.meta.env.DEV && <div className={`camera-status status-${status}`}>camera: {status}</div>}
+      {visit.phase === 'processing' && (
+        <div
+          className={`publication-stage${publication && isPublicationProblem(publication.status) ? ' is-problem' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="publication-stage-dot" aria-hidden="true" />
+          <span>{publicationText}</span>
+          {publicationConnection === 'reconnecting' && <small>재연결 중</small>}
+        </div>
+      )}
       {adminOpen && (
         <section className="admin-panel" onPointerUp={(event) => event.stopPropagation()} aria-label="관리자 패널">
           <header className="admin-header">
@@ -272,7 +323,7 @@ export default function App() {
               </p>
               <h1>관리자 패널</h1>
             </div>
-            {statusText && <p className={`capture-status capture-${visit.phase === 'running' ? 'busy' : capture.kind}`} role="status">{statusText}</p>}
+            {statusText && <p className={`capture-status capture-${visit.phase === 'running' ? 'busy' : publication && isPublicationProblem(publication.status) ? 'error' : capture.kind}`} role="status">{statusText}</p>}
             <button className="icon-button" type="button" onClick={() => setAdminOpen(false)} aria-label="관리자 패널 닫기">×</button>
           </header>
 

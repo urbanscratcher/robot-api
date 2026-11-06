@@ -11,6 +11,11 @@ export default defineConfig({
         changeOrigin: true,
         headers: { origin: '' },
       },
+      '/api/mobile/publications': {
+        target: 'https://h.joun.cc',
+        changeOrigin: true,
+        headers: { origin: '' },
+      },
       // 3000번을 다른 서버가 쓰고 있으면 BACKEND_URL=http://localhost:3007 처럼 바꿔서 실행
       '/api': process.env.BACKEND_URL ?? 'http://localhost:3000',
     },
