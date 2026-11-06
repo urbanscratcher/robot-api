@@ -15,6 +15,19 @@ export interface PersonDetectorOptions {
 
 export type DetectorState = 'off' | 'loading' | 'ready' | 'error'
 
+function captureVideoFrame(video: HTMLVideoElement) {
+  if (!video.videoWidth || !video.videoHeight) return Promise.resolve<Blob | null>(null)
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const context = canvas.getContext('2d')
+  if (!context) return Promise.resolve<Blob | null>(null)
+
+  // drawImage는 동기식이라 인식이 확정된 바로 이 프레임을 먼저 고정한다.
+  context.drawImage(video, 0, 0, canvas.width, canvas.height)
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+}
+
 let detectorPromise: Promise<ObjectDetector> | null = null
 export function loadPersonDetector() {
   detectorPromise ??= (async () => {
@@ -50,13 +63,13 @@ export function findPerson(detector: ObjectDetector, source: HTMLVideoElement | 
   return best
 }
 
-// 사람이 연속 arriveChecks번 보이면, 보이는 동안 검사할 때마다 onPresent를 부른다.
+// 사람이 연속 arriveChecks번 보이면, 인식이 확정된 프레임을 고정해서 onPresent에 넘긴다.
 // (언제 실제로 움직일지는 부르는 쪽이 정한다: 취재 중·쉬는 중이면 무시)
 export function usePersonDetector(
   videoRef: RefObject<HTMLVideoElement | null>,
   enabled: boolean,
   options: PersonDetectorOptions,
-  onPresent: () => void,
+  onPresent: (detectedFrame: Blob | null) => void,
 ) {
   const [state, setState] = useState<DetectorState>('off')
   const [person, setPerson] = useState<{ score: number; areaRatio: number } | null>(null)
@@ -94,7 +107,9 @@ export function usePersonDetector(
           const counts = found !== null && found.areaRatio >= minAreaRatio
           setPerson(found)
           seenInRow = counts ? seenInRow + 1 : 0
-          if (seenInRow >= arriveChecks) onPresentRef.current()
+          if (seenInRow >= arriveChecks) {
+            void captureVideoFrame(video).then((frame) => onPresentRef.current(frame))
+          }
         }
         timer = window.setTimeout(tick, intervalMs)
       }

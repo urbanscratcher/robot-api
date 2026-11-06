@@ -262,7 +262,7 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [visit.phase])
 
-  const runVisit = useCallback(async () => {
+  const runVisit = useCallback(async (detectedFrame?: Blob | null) => {
     if (visitPhaseRef.current !== 'idle') return
     if (!OBSERVATION_URL || !OBSERVATION_TOKEN) {
       setCapture({ kind: 'error', message: OBSERVATION_URL ? '토큰 미설정' : 'API 경로 미설정' })
@@ -280,8 +280,10 @@ export default function App() {
 
     let photosSent = 0
     const publicationEventIds: string[] = []
-    const photoJobs = VISIT.photoDelaysMs.map((delay) => sleep(delay).then(async () => {
-      const photo = await captureFrame()
+    const photoJobs = VISIT.photoDelaysMs.map((delay, index) => sleep(delay).then(async () => {
+      // 첫 사진은 사람이 있다고 판정한 바로 그 프레임을 사용한다. 상태 변경과
+      // JPEG 변환 사이에 사람이 움직여 배경만 찍히는 일을 피한다.
+      const photo = index === 0 && detectedFrame ? detectedFrame : await captureFrame()
       if (!photo) return
       try {
         const reading = piezoRef.current
@@ -357,7 +359,9 @@ export default function App() {
 
   const [lastTranscript, setLastTranscript] = useState('')
   const [autoCapture, setAutoCapture] = useState(true)
-  const onPersonPresent = useCallback(() => { void runVisit() }, [runVisit])
+  const onPersonPresent = useCallback((detectedFrame: Blob | null) => {
+    void runVisit(detectedFrame)
+  }, [runVisit])
   const detector = usePersonDetector(
     videoRef,
     autoCapture && status === 'active' && visit.phase === 'idle',
