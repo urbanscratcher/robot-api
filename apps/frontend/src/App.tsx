@@ -24,6 +24,9 @@ type BubblePlacement = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-center
 
 const BUBBLE_PLACEMENTS: BubblePlacement[] = ['top-left', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
+const newInteractionId = () => typeof crypto.randomUUID === 'function'
+  ? crypto.randomUUID()
+  : `interaction-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 type HurtStage = 1 | 2
 type RobotStatus = {
@@ -310,6 +313,10 @@ export default function App() {
     setCapture({ kind: 'busy', message: '' })
     await startCamera()
 
+    const interactionId = newInteractionId()
+    const recordingStarted = new Date()
+    const recordingStartedAt = recordingStarted.toISOString()
+    setVisit({ phase: 'running', photos: 0, until: recordingStarted.getTime() + VISIT.maxListenMs })
     let speech: SpeechSession | null = null
     try { speech = startListening('ko-KR') } catch { speech = null }
 
@@ -329,6 +336,8 @@ export default function App() {
           setPiezo(null)
         }
         const { response, eventId } = await sendObservation({
+          interactionId,
+          recordingStartedAt,
           image: photo,
           sensors: reading ? { piezoLevel: reading.stage } : {},
         })
@@ -343,8 +352,8 @@ export default function App() {
     }))
 
     const speechJob = (async () => {
-      if (speech) await speech.waitForPause(VISIT.silenceMs, VISIT.noSpeechMs, VISIT.maxListenMs)
-      else await sleep(VISIT.noSpeechMs)
+      await sleep(Math.max(0, recordingStarted.getTime() + VISIT.maxListenMs - Date.now()))
+      const recordingEndedAt = new Date().toISOString()
       const text = speech ? await speech.stop() : ''
 
       let result: string
@@ -352,7 +361,12 @@ export default function App() {
       else if (!text) result = speech.lastError() === 'not-allowed' ? '마이크 거부' : '말소리 없음'
       else {
         try {
-          const response = await sendTranscript(text)
+          const response = await sendTranscript({
+            interactionId,
+            recordingStartedAt,
+            recordingEndedAt,
+            text,
+          })
           result = response.ok ? '대화 전송' : `대화 실패 ${response.status}`
         } catch {
           result = '대화 실패(네트워크)'

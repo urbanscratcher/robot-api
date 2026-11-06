@@ -2,14 +2,25 @@ import { CAMERA_ID, OBSERVATION_TOKEN, OBSERVATION_URL, TRANSCRIPT_URL } from '.
 
 export interface Observation {
   eventId: string
+  interactionId: string
+  recordingStartedAt: string
   capturedAt: string
   sensors: Record<string, unknown>
   image?: string
 }
 
 export interface ObservationParts {
+  interactionId: string
+  recordingStartedAt: string
   image?: Blob | null
   sensors?: Record<string, unknown>
+}
+
+export interface TranscriptParts {
+  interactionId: string
+  recordingStartedAt: string
+  recordingEndedAt: string
+  text: string
 }
 
 const pad = (value: number, length = 2) => String(value).padStart(length, '0')
@@ -51,6 +62,8 @@ function blobToDataUrl(blob: Blob) {
 export async function buildObservation(parts: ObservationParts, capturedAt = new Date()): Promise<Observation> {
   const observation: Observation = {
     eventId: nextEventId(capturedAt),
+    interactionId: parts.interactionId,
+    recordingStartedAt: parts.recordingStartedAt,
     capturedAt: localIsoString(capturedAt),
     sensors: parts.sensors ?? {},
   }
@@ -75,7 +88,12 @@ export async function sendObservation(parts: ObservationParts, url = OBSERVATION
   return { response, eventId: observation.eventId }
 }
 
-// 휴대폰에서 글자로 바꾼 대화 내용. 서버 규칙: 비어 있지 않고 12,000자 이내.
-export function sendTranscript(text: string, url = TRANSCRIPT_URL) {
-  return postJson(url, { text: text.trim().slice(0, 12000) })
+// 한 인터랙션의 녹음 구간 전체를 휴대폰에서 글자로 바꾼 최종 결과.
+export function sendTranscript(parts: TranscriptParts, url = TRANSCRIPT_URL) {
+  return postJson(url, {
+    interactionId: parts.interactionId,
+    recordingStartedAt: parts.recordingStartedAt,
+    recordingEndedAt: parts.recordingEndedAt,
+    text: parts.text.trim().slice(0, 12000),
+  })
 }
