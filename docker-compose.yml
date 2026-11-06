@@ -21,6 +21,8 @@ services:
     container_name: robot-face-backend
     environment:
       PORT: 3000
+      # 설정하면 ESP32가 POST /api/hurt 할 때 Authorization: Bearer <토큰> 이 필요하다.
+      HURT_TOKEN: ${HURT_TOKEN:-}
     restart: unless-stopped
 
 networks:
