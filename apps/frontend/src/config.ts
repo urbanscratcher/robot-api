@@ -22,11 +22,13 @@ export const AUTO_CAPTURE = {
   arriveChecks: 2,        // 연속 2번(약 1초) 보여야 시작
 }
 
-// 취재 한 번: 사진 1장(시작할 때) + 20초 엿듣기. 이후 게시 완료까지 다음 취재를 멈춘다.
+// 취재 한 번: 사진 1장(시작할 때) + 발화가 끝날 때까지 듣기. 20초는 긴 발화의 최대 제한이다.
 // 사진을 더 찍으려면 [0, 4000, 8000]처럼 찍을 시각(ms)을 더 넣는다.
 export const VISIT = {
   photoDelaysMs: [0],
-  listenMs: 20000,
+  silenceMs: 2000,
+  noSpeechMs: 8000,
+  maxListenMs: 20000,
 }
 
 // eventId 앞부분: camera-1-20261106-001

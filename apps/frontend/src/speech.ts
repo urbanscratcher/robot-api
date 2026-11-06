@@ -24,6 +24,8 @@ function getRecognition(): RecognitionConstructor | undefined {
 export const isSpeechSupported = () => Boolean(getRecognition())
 
 export interface SpeechSession {
+  // 말이 시작된 뒤 일정 시간 새 결과가 없거나, 아무 말도 없는 제한 시간이 지나면 끝낸다.
+  waitForPause(silenceMs: number, noSpeechMs: number, maxMs: number): Promise<void>
   // 듣기를 끝내고 지금까지 받아쓴 글을 돌려준다.
   stop(): Promise<string>
   // 오류가 있었다면 마지막 오류 이름 (not-allowed: 마이크 권한 거부 등)
@@ -81,6 +83,9 @@ export function startListening(lang = 'ko-KR'): SpeechSession {
   let error: string | null = null
   let recognition: RecognitionLike
   let ended: (() => void) | null = null
+  let heardSpeech = false
+  let lastResultAt = 0
+  let activityChanged: (() => void) | null = null
 
   const begin = () => {
     current = []
@@ -89,12 +94,16 @@ export function startListening(lang = 'ko-KR'): SpeechSession {
     recognition.continuous = true
     recognition.interimResults = true
     recognition.onresult = (event) => {
-      const segments: string[] = []
+      const finalSegments: string[] = []
       for (let i = 0; i < event.results.length; i += 1) {
         const text = event.results[i][0].transcript.trim()
-        if (text) segments.push(text)
+        if (!text) continue
+        heardSpeech = true
+        lastResultAt = Date.now()
+        if (event.results[i].isFinal) finalSegments.push(text)
       }
-      current = mergeSegments(segments)
+      current = mergeSegments(finalSegments)
+      activityChanged?.()
     }
     recognition.onerror = (event) => {
       error = event.error
@@ -114,6 +123,25 @@ export function startListening(lang = 'ko-KR'): SpeechSession {
 
   return {
     lastError: () => error,
+    waitForPause: (silenceMs, noSpeechMs, maxMs) => new Promise<void>((resolve) => {
+      const startedAt = Date.now()
+      let timer = 0
+      const check = () => {
+        window.clearTimeout(timer)
+        const now = Date.now()
+        const elapsed = now - startedAt
+        const quietFor = heardSpeech ? now - lastResultAt : elapsed
+        const limit = heardSpeech ? silenceMs : noSpeechMs
+        if (quietFor >= limit || elapsed >= maxMs || !active) {
+          activityChanged = null
+          resolve()
+          return
+        }
+        timer = window.setTimeout(check, Math.min(limit - quietFor, maxMs - elapsed))
+      }
+      activityChanged = check
+      check()
+    }),
     stop: () => new Promise<string>((resolve) => {
       const finish = () => resolve(cleanTranscript([...committed, ...current]))
       if (!active) { finish(); return }

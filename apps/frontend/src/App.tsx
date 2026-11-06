@@ -276,7 +276,7 @@ export default function App() {
   const [publication, setPublication] = useState<PublicationStatus | null>(null)
   const [publicationConnection, setPublicationConnection] = useState<PublicationConnection>('connecting')
 
-  // 취재: 사람을 보면 사진(config의 VISIT.photoDelaysMs, 지금은 1장)을 찍어 /api/observations 로 보내고, 20초 동안 들은 말을
+  // 취재: 사람을 보면 사진(config의 VISIT.photoDelaysMs, 지금은 1장)을 찍어 /api/observations 로 보내고, 발화가 끝날 때까지 들은 말을
   // 글자로 바꿔 /api/transcripts 로 보낸다. 이후 published 신호가 올 때까지 사람 인식과 다음 취재를 멈춘다.
   const [visit, setVisit] = useState<VisitState>({ phase: 'idle', photos: 0, until: 0 })
   const visitPhaseRef = useRef<VisitState['phase']>('idle')
@@ -297,7 +297,7 @@ export default function App() {
     visitPhaseRef.current = 'running'
     setPublication(null)
     const startedAt = Date.now()
-    setVisit({ phase: 'running', photos: 0, until: startedAt + VISIT.listenMs })
+    setVisit({ phase: 'running', photos: 0, until: startedAt + VISIT.maxListenMs })
     setCapture({ kind: 'busy', message: '' })
     await startCamera()
 
@@ -333,7 +333,8 @@ export default function App() {
       }
     }))
 
-    await sleep(VISIT.listenMs)
+    if (speech) await speech.waitForPause(VISIT.silenceMs, VISIT.noSpeechMs, VISIT.maxListenMs)
+    else await sleep(VISIT.noSpeechMs)
     const text = speech ? await speech.stop() : ''
     await Promise.all(photoJobs)
 
