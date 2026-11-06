@@ -19,12 +19,17 @@ type VisitState = { phase: 'idle' | 'running' | 'processing'; photos: number; un
 type PiezoReading = { level: number; stage: 1 | 2; strength: 'weak' | 'strong' }
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
-const VOICE_FILES = [
-  '/audio/voice-1.wav',
-  '/audio/voice-2.wav',
-  '/audio/voice-3.wav',
-  '/audio/voice-4.wav',
-  '/audio/voice-5.wav',
+type HurtStage = 1 | 2
+type HurtVoice = { source: string; text: string; stage: HurtStage }
+
+const HURT_VOICES: HurtVoice[] = [
+  { source: '/audio/hurt-1-1.wav', text: '아파요', stage: 1 },
+  { source: '/audio/hurt-1-2.wav', text: '아야!', stage: 1 },
+  { source: '/audio/hurt-1-3.wav', text: '엄마야!', stage: 1 },
+  { source: '/audio/hurt-1-4.wav', text: '꺄!', stage: 1 },
+  { source: '/audio/hurt-2-1.wav', text: '아이씨!', stage: 2 },
+  { source: '/audio/hurt-2-2.wav', text: '히잉…', stage: 2 },
+  { source: '/audio/hurt-2-3.wav', text: '왜 때려!', stage: 2 },
 ]
 
 interface WakeLockSentinelLike extends EventTarget {
@@ -36,12 +41,13 @@ export default function App() {
   const [expression, setExpression] = useState<Expression>('happy')
   const [glitchKey, setGlitchKey] = useState(0)
   const [glitching, setGlitching] = useState(false)
+  const [hurtBubble, setHurtBubble] = useState('')
   const [adminOpen, setAdminOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement))
   const secretTapRef = useRef({ count: 0, lastTap: 0 })
   const audioPlayersRef = useRef<HTMLAudioElement[]>([])
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
-  const lastAudioIndexRef = useRef(-1)
+  const lastAudioIndexRef = useRef<Record<HurtStage, number>>({ 1: -1, 2: -1 })
   const glitchTimerRef = useRef<number | null>(null)
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null)
   const { videoRef, status, startCamera, stopCamera, captureFrame } = useCamera()
@@ -66,31 +72,39 @@ export default function App() {
   }, [])
 
   // 아파하는 반응: 글리치 + 아픈 표정 + 녹음 재생. 화면 탭과 ESP32 피에조 충격이 같이 쓴다.
-  const triggerHurt = useCallback(() => {
+  const triggerHurt = useCallback((stage: HurtStage = 1) => {
     setExpression('hurt')
     setGlitchKey((current) => current + 1)
     setGlitching(true)
     if (glitchTimerRef.current) window.clearTimeout(glitchTimerRef.current)
     glitchTimerRef.current = window.setTimeout(() => setGlitching(false), 620)
-    if (audioPlayersRef.current.length) {
-      let nextIndex = Math.floor(Math.random() * audioPlayersRef.current.length)
-      if (audioPlayersRef.current.length > 1 && nextIndex === lastAudioIndexRef.current) {
-        nextIndex = (nextIndex + 1 + Math.floor(Math.random() * (audioPlayersRef.current.length - 1))) % audioPlayersRef.current.length
+    const candidates = HURT_VOICES.map((voice, index) => ({ voice, index })).filter(({ voice }) => voice.stage === stage)
+    if (audioPlayersRef.current.length && candidates.length) {
+      let candidateIndex = Math.floor(Math.random() * candidates.length)
+      if (candidates.length > 1 && candidates[candidateIndex].index === lastAudioIndexRef.current[stage]) {
+        candidateIndex = (candidateIndex + 1 + Math.floor(Math.random() * (candidates.length - 1))) % candidates.length
       }
+      const { voice, index: nextIndex } = candidates[candidateIndex]
       currentAudioRef.current?.pause()
       if (currentAudioRef.current) currentAudioRef.current.currentTime = 0
       const player = audioPlayersRef.current[nextIndex]
       player.currentTime = 0
-      player.onended = () => setExpression('happy')
-      player.onerror = () => setExpression('happy')
+      setHurtBubble(voice.text)
+      const finish = () => {
+        if (currentAudioRef.current !== player) return
+        setExpression('happy')
+        setHurtBubble('')
+      }
+      player.onended = finish
+      player.onerror = finish
       currentAudioRef.current = player
-      lastAudioIndexRef.current = nextIndex
+      lastAudioIndexRef.current[stage] = nextIndex
       // 소리를 못 내도(자동 재생 차단 등) 아픈 표정은 잠깐 보여준다.
-      void player.play().catch(() => window.setTimeout(() => setExpression('happy'), 1500))
-    } else window.setTimeout(() => setExpression('happy'), 1500)
+      void player.play().catch(() => window.setTimeout(finish, 1500))
+    } else window.setTimeout(() => { setExpression('happy'); setHurtBubble('') }, 1500)
   }, [])
 
-  // iPhone은 사용자가 화면을 만진 뒤에만 소리를 낼 수 있다. 첫 터치 때 녹음 5개를 모두 소리 없이
+  // iPhone은 사용자가 화면을 만진 뒤에만 소리를 낼 수 있다. 첫 터치 때 녹음을 모두 소리 없이
   // 한 번 재생해 두면, 이후 피에조 충격처럼 터치 없이 온 신호에도 소리가 난다.
   const audioUnlockedRef = useRef(false)
   const unlockAudio = useCallback(() => {
@@ -134,16 +148,18 @@ export default function App() {
     events.onopen = () => setHurtLink('open')
     events.onerror = () => setHurtLink(events.readyState === EventSource.CLOSED ? 'closed' : 'connecting')
     events.addEventListener('hurt', (event) => {
+      let stage: HurtStage = 1
       try {
         const reading = JSON.parse((event as MessageEvent<string>).data) as PiezoReading
         if (typeof reading.level === 'number' && (reading.stage === 1 || reading.stage === 2)) {
+          stage = reading.stage
           piezoRef.current = reading
           setPiezo(reading)
         }
       } catch {
         // 예전 서버 형식이어도 아픈 반응 자체는 유지한다.
       }
-      triggerHurt()
+      triggerHurt(stage)
     })
     return () => events.close()
   }, [triggerHurt])
@@ -286,7 +302,7 @@ export default function App() {
       : capture.message
 
   useEffect(() => {
-    audioPlayersRef.current = VOICE_FILES.map((source) => {
+    audioPlayersRef.current = HURT_VOICES.map(({ source }) => {
       const audio = new Audio(source)
       audio.preload = 'auto'
       return audio
@@ -330,6 +346,11 @@ export default function App() {
       >
         <RobotFace expression={expression} recording={visit.phase === 'running'} />
       </div>
+      {hurtBubble && (
+        <div key={`${glitchKey}-${hurtBubble}`} className="hurt-bubble" role="status" aria-live="assertive">
+          {hurtBubble}
+        </div>
+      )}
       {glitching && <div key={glitchKey} className="glitch-overlay" aria-hidden="true" />}
       {import.meta.env.DEV && <div className={`camera-status status-${status}`}>camera: {status}</div>}
       {visit.phase === 'processing' && (

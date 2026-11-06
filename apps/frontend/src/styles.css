@@ -60,6 +60,52 @@ body {
   animation-fill-mode: both;
 }
 
+.hurt-bubble {
+  position: fixed;
+  z-index: 12;
+  top: max(7dvh, calc(env(safe-area-inset-top) + 1.25rem));
+  left: 50%;
+  max-width: min(82dvw, 32rem);
+  padding: clamp(.7rem, 2.2vmin, 1.1rem) clamp(1.2rem, 4vmin, 2rem);
+  border: clamp(3px, .7vmin, 6px) solid #111;
+  border-radius: 999px;
+  color: #111;
+  background: #fff;
+  box-shadow: .35rem .45rem 0 rgba(255, 117, 158, .95), 0 1rem 3rem rgba(0, 0, 0, .4);
+  font-size: clamp(1.6rem, 7vmin, 4.5rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.05em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: hurt-bubble-pop .34s cubic-bezier(.2, 1.55, .45, 1) both;
+}
+
+.hurt-bubble::after {
+  content: "";
+  position: absolute;
+  left: 58%;
+  bottom: clamp(-1rem, -2.7vmin, -.65rem);
+  width: clamp(1rem, 3vmin, 1.8rem);
+  height: clamp(1rem, 3vmin, 1.8rem);
+  border-right: clamp(3px, .7vmin, 6px) solid #111;
+  border-bottom: clamp(3px, .7vmin, 6px) solid #111;
+  background: #fff;
+  transform: rotate(45deg) skew(10deg, 10deg);
+}
+
+@keyframes hurt-bubble-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(1rem) scale(.55) rotate(-4deg); }
+  70% { transform: translateX(-50%) translateY(-.25rem) scale(1.06) rotate(1deg); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hurt-bubble { animation-duration: .01ms; }
+}
+
 .glitch-overlay {
   position: fixed;
   z-index: 8;
