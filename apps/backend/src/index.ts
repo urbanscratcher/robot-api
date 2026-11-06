@@ -45,6 +45,15 @@ setInterval(() => {
   for (const listener of listeners) listener.write(': ping\n\n')
 }, 15000).unref()
 
+// 로봇(ESP32) 주행 켜기/끄기. 관리자 패널이 POST로 바꾸고, ESP32는 GET으로 1초마다 확인한다.
+// 서버가 다시 시작되면 켜짐으로 돌아간다(ESP32 자체 동작과 같음).
+const robot = { driving: true, updatedAt: new Date().toISOString(), lastSeenAt: null as string | null }
+
+function robotStatus() {
+  const seenMsAgo = robot.lastSeenAt ? Date.now() - Date.parse(robot.lastSeenAt) : null
+  return { ...robot, online: seenMsAgo !== null && seenMsAgo < 5000 }
+}
+
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
 
@@ -64,6 +73,33 @@ const server = createServer(async (request, response) => {
     response.write('retry: 2000\n\n')
     listeners.add(response)
     request.on('close', () => listeners.delete(response))
+    return
+  }
+
+  // 로봇 주행 상태.  GET /api/robot  (ESP32는 ?device=esp32 를 붙여서 접속 기록을 남긴다)
+  if (request.method === 'GET' && url.pathname === '/api/robot') {
+    if (url.searchParams.get('device') === 'esp32') robot.lastSeenAt = new Date().toISOString()
+    json(response, 200, robotStatus())
+    return
+  }
+
+  // 관리자 패널에서 주행 켜기/끄기.  POST /api/robot  {"driving": false}
+  if (request.method === 'POST' && url.pathname === '/api/robot') {
+    let driving: unknown
+    try {
+      driving = (JSON.parse(await readBody(request)) as { driving?: unknown }).driving
+    } catch {
+      driving = undefined
+    }
+    if (typeof driving !== 'boolean') {
+      json(response, 400, { error: 'boolean driving required' })
+      return
+    }
+    robot.driving = driving
+    robot.updatedAt = new Date().toISOString()
+    broadcast('robot', robotStatus())
+    console.log(`[robot] driving=${driving}`)
+    json(response, 200, robotStatus())
     return
   }
 
