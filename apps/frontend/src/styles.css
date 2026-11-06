@@ -1,7 +1,7 @@
 :root {
   font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
-  color-scheme: dark;
-  background: #000;
+  color-scheme: light;
+  background: #f7f4ec;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -13,7 +13,7 @@ html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #000;
+  background: #f7f4ec;
   overscroll-behavior: none;
 }
 
@@ -31,13 +31,13 @@ body {
   min-height: 100%;
   overflow: hidden;
   cursor: pointer;
-  background: #000;
+  background: #f7f4ec;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .robot-face {
-  --eye-color: #fff;
-  --eye-glow: rgba(255,255,255,.18);
+  --eye-color: #191817;
+  --eye-glow: transparent;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -63,42 +63,41 @@ body {
 .hurt-bubble {
   position: fixed;
   z-index: 12;
-  top: max(7dvh, calc(env(safe-area-inset-top) + 1.25rem));
+  top: max(6dvh, calc(env(safe-area-inset-top) + 1rem));
   left: 50%;
   max-width: min(82dvw, 32rem);
-  padding: clamp(.7rem, 2.2vmin, 1.1rem) clamp(1.2rem, 4vmin, 2rem);
-  border: clamp(3px, .7vmin, 6px) solid #111;
-  border-radius: 999px;
-  color: #111;
-  background: #fff;
-  box-shadow: .35rem .45rem 0 rgba(255, 117, 158, .95), 0 1rem 3rem rgba(0, 0, 0, .4);
-  font-size: clamp(1.6rem, 7vmin, 4.5rem);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -.05em;
+  padding: clamp(.65rem, 1.8vmin, .95rem) clamp(1.1rem, 3.2vmin, 1.65rem);
+  border: clamp(2px, .45vmin, 4px) solid #191817;
+  border-radius: 50% / 58%;
+  color: #191817;
+  background: #fffefa;
+  box-shadow: 0 .35rem 1.2rem rgba(49, 42, 33, .1);
+  font-size: clamp(1.35rem, 5.5vmin, 3.25rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -.04em;
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
   transform: translateX(-50%);
-  animation: hurt-bubble-pop .34s cubic-bezier(.2, 1.55, .45, 1) both;
+  animation: hurt-bubble-pop .2s cubic-bezier(.23, 1, .32, 1) both;
 }
 
 .hurt-bubble::after {
   content: "";
   position: absolute;
-  left: 58%;
-  bottom: clamp(-1rem, -2.7vmin, -.65rem);
-  width: clamp(1rem, 3vmin, 1.8rem);
-  height: clamp(1rem, 3vmin, 1.8rem);
-  border-right: clamp(3px, .7vmin, 6px) solid #111;
-  border-bottom: clamp(3px, .7vmin, 6px) solid #111;
-  background: #fff;
-  transform: rotate(45deg) skew(10deg, 10deg);
+  left: 67%;
+  bottom: clamp(-.7rem, -1.8vmin, -.45rem);
+  width: clamp(.8rem, 2.2vmin, 1.25rem);
+  height: clamp(.8rem, 2.2vmin, 1.25rem);
+  border-right: clamp(2px, .45vmin, 4px) solid #191817;
+  border-bottom: clamp(2px, .45vmin, 4px) solid #191817;
+  background: #fffefa;
+  transform: rotate(45deg) skew(6deg, 6deg);
 }
 
 @keyframes hurt-bubble-pop {
-  from { opacity: 0; transform: translateX(-50%) translateY(1rem) scale(.55) rotate(-4deg); }
-  70% { transform: translateX(-50%) translateY(-.25rem) scale(1.06) rotate(1deg); }
+  from { opacity: 0; transform: translateX(-50%) translateY(.4rem) scale(.94); }
   to { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
@@ -143,7 +142,7 @@ body {
   height: min(35dvh, 18rem);
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(255,255,255,.035), transparent 70%);
+  background: radial-gradient(ellipse, rgba(255, 255, 255, .55), transparent 70%);
   filter: blur(14px);
   pointer-events: none;
 }
@@ -161,15 +160,15 @@ body {
 
 .eye {
   position: relative;
-  width: clamp(7.5rem, 22dvw, 22rem);
-  height: clamp(8.5rem, 43dvh, 24rem);
+  width: clamp(4rem, 11dvw, 10rem);
+  height: clamp(5rem, 24dvh, 12rem);
   max-height: 58dvw;
   overflow: hidden;
-  border-radius: 48% 48% 46% 46% / 43% 43% 53% 53%;
+  border-radius: 50%;
   background: var(--eye-color);
-  box-shadow: 0 0 1.3rem var(--eye-glow), inset 0 -1rem 2rem rgba(185,215,255,.09);
+  box-shadow: none;
   transform-origin: 50% 50%;
-  animation: idle-look 9s cubic-bezier(.45,0,.2,1) infinite, blink 6.4s ease-in-out infinite;
+  animation: idle-look 12s cubic-bezier(.77,0,.175,1) infinite, blink 7.2s ease-in-out infinite;
 }
 
 .eye-right { animation-delay: .025s, .025s; }
@@ -182,40 +181,34 @@ body {
   aspect-ratio: 1;
   border-radius: 50%;
   background: rgba(255,255,255,.9);
-  opacity: 0;
+  opacity: .92;
 }
 
-.expression-happy .eyes { gap: clamp(3.3rem, 14dvw, 12rem); }
+.expression-happy .eyes { gap: clamp(5rem, 18dvw, 15rem); }
 .expression-happy .eye {
-  height: clamp(5rem, 24dvh, 12rem);
-  border-radius: 50% 50% 10% 10% / 100% 100% 8% 8%;
-  background: transparent;
-  box-shadow: inset 0 clamp(1.4rem, 7dvh, 4rem) 0 var(--eye-color);
-  animation: happy-bob 2.2s ease-in-out infinite;
-  overflow: visible;
+  width: clamp(3.6rem, 9dvw, 8rem);
+  height: clamp(4.8rem, 22dvh, 10.5rem);
+  animation: happy-bob 3.6s ease-in-out infinite;
 }
 
-.expression-surprised .eyes { gap: clamp(3rem, 11dvw, 9rem); }
+.expression-surprised .eyes { gap: clamp(4.5rem, 16dvw, 13rem); }
 .expression-surprised .eye {
-  width: clamp(9rem, 25dvw, 25rem);
-  height: clamp(9rem, 52dvh, 28rem);
-  max-height: 62dvw;
+  width: clamp(4.8rem, 12dvw, 11rem);
+  height: clamp(6.5rem, 30dvh, 14rem);
   border-radius: 50%;
-  animation: surprise-pop 2.8s cubic-bezier(.34,1.56,.64,1) infinite;
+  animation: surprise-pop 2.8s cubic-bezier(.23,1,.32,1) infinite;
 }
 
 /* AI가 기사를 쓰는 동안: 기존 웃는 표정에 입만 살짝 비대칭인 미소로 바꾼다. */
 .expression-thinking .eyes {
-  gap: clamp(3.3rem, 14dvw, 12rem);
+  gap: clamp(5rem, 18dvw, 15rem);
 }
 .expression-thinking .eye {
-  height: clamp(5rem, 24dvh, 12rem);
-  border-radius: 50% 50% 10% 10% / 100% 100% 8% 8%;
-  background: transparent;
-  box-shadow: inset 0 clamp(1.4rem, 7dvh, 4rem) 0 var(--eye-color);
-  animation: happy-bob 2.2s ease-in-out infinite;
-  overflow: visible;
+  width: clamp(3.6rem, 9dvw, 8rem);
+  height: clamp(4.8rem, 22dvh, 10.5rem);
+  animation: happy-bob 3.6s ease-in-out infinite;
 }
+.expression-thinking .eye-right { transform: scaleY(.72) rotate(-8deg); }
 .expression-thinking .mouth {
   animation: thinking-mouth 2.2s ease-in-out infinite;
 }
@@ -225,17 +218,17 @@ body {
 }
 
 .expression-hurt .eyes {
-  gap: clamp(3.5rem, 14dvw, 12rem);
-  animation: hurt-shiver .13s linear infinite;
+  gap: clamp(5rem, 17dvw, 14rem);
+  animation: hurt-shiver .18s linear infinite;
 }
 .expression-hurt .eye {
-  width: clamp(8rem, 23dvw, 23rem);
-  height: clamp(7rem, 38dvh, 20rem);
+  width: clamp(5rem, 13dvw, 12rem);
+  height: clamp(5rem, 27dvh, 13rem);
   overflow: visible;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  animation: hurt-squeeze .42s ease-in-out infinite alternate;
+  animation: hurt-squeeze .55s ease-in-out infinite alternate;
 }
 .expression-hurt .eye::before,
 .expression-hurt .eye::after {
@@ -243,11 +236,11 @@ body {
   position: absolute;
   left: 48%;
   top: 50%;
-  width: 24%;
-  height: 108%;
+  width: 14%;
+  height: 92%;
   border-radius: 999px;
   background: var(--eye-color);
-  box-shadow: 0 0 1.2rem var(--eye-glow);
+  box-shadow: none;
   transform: translate(-50%, -50%) rotate(45deg);
 }
 .expression-hurt .eye::after { transform: translate(-50%, -50%) rotate(-45deg); }
@@ -261,17 +254,17 @@ body {
 }
 .cheek {
   position: absolute;
-  bottom: -16%;
-  width: 56%;
-  aspect-ratio: 1.6;
+  bottom: -12%;
+  width: 72%;
+  aspect-ratio: 2.2;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255,120,165,.85), rgba(255,120,165,0));
+  background: radial-gradient(closest-side, rgba(242,151,160,.62), rgba(242,151,160,0));
   pointer-events: none;
   transition: opacity .3s ease;
 }
 .eye-slot-left .cheek { left: -16%; }
 .eye-slot-right .cheek { right: -16%; }
-.expression-hurt .cheek { background: radial-gradient(closest-side, rgba(255,90,120,.85), rgba(255,90,120,0)); }
+.expression-hurt .cheek { background: radial-gradient(closest-side, rgba(242,130,143,.72), rgba(242,130,143,0)); }
 
 .brow {
   position: absolute;
@@ -291,13 +284,13 @@ body {
   position: relative;
   z-index: 1;
   display: block;
-  width: clamp(5rem, 22vmin, 10rem);
-  margin-top: clamp(1rem, 6vmin, 3.5rem);
+  width: clamp(4rem, 15vmin, 7.5rem);
+  margin-top: clamp(.75rem, 4vmin, 2.25rem);
   color: var(--eye-color);
-  filter: drop-shadow(0 0 .7rem var(--eye-glow));
+  filter: none;
   overflow: visible;
 }
-.mouth-cat { animation: happy-bob 2.2s ease-in-out infinite; }
+.mouth-cat { animation: happy-bob 3.6s ease-in-out infinite; }
 .mouth-wobble { animation: mouth-wobble .26s ease-in-out infinite alternate; }
 @keyframes mouth-wobble {
   from { transform: translateX(-3%) scaleY(.85); }

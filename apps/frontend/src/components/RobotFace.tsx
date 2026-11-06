@@ -10,18 +10,18 @@ interface RobotFaceProps {
 type MouthShape = 'cat' | 'thinking' | 'wobble' | 'o' | 'grin'
 
 function Mouth({ shape }: { shape: MouthShape }) {
-  const line = { fill: 'none', stroke: 'currentColor', strokeWidth: 8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
+  const line = { fill: 'none', stroke: 'currentColor', strokeWidth: 6, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
   return (
     <svg className={`mouth mouth-${shape}`} viewBox="0 0 120 60" aria-hidden="true">
-      {shape === 'cat' && <path {...line} d="M10 16 Q35 52 60 22 Q85 52 110 16" />}
-      {shape === 'thinking' && <path {...line} d="M12 18 Q36 50 60 23 Q82 45 106 18" />}
-      {shape === 'wobble' && <path {...line} d="M14 30 q11.5 -15 23 0 t23 0 t23 0 t23 0" />}
-      {shape === 'o' && <ellipse cx="60" cy="30" rx="13" ry="17" fill="currentColor" />}
+      {shape === 'cat' && <path {...line} d="M27 21 Q43 42 60 25 Q77 42 93 21" />}
+      {shape === 'thinking' && <path {...line} d="M31 28 Q47 19 62 29 Q77 38 91 27" />}
+      {shape === 'wobble' && <path {...line} d="M25 31 Q36 18 47 31 T69 31 T91 31" />}
+      {shape === 'o' && <ellipse cx="60" cy="31" rx="11" ry="14" fill="none" stroke="currentColor" strokeWidth="6" />}
       {shape === 'grin' && (
         <>
-          <path d="M6 8 Q60 78 114 8 Q60 26 6 8 Z" fill="currentColor" />
+          <path d="M18 15 Q60 64 102 15 Q60 30 18 15 Z" fill="currentColor" />
           <path
-            d="M14 12 L21 25 L28 15 L36 30 L44 18 L52 33 L60 20 L68 33 L76 18 L84 30 L92 15 L99 25 L106 12"
+            d="M27 20 L34 29 L42 22 L51 33 L60 24 L69 33 L78 22 L86 29 L93 20"
             fill="none"
             stroke="#000"
             strokeWidth="4"

@@ -39,9 +39,9 @@ export function publicationStage(publication: PublicationStatus) {
   const total = publication.total ?? publication.cardTotal
   const cardCount = current && total ? ` ${current}/${total}` : ''
   const stages: Record<string, string> = {
-    received: '사진 수신 완료',
-    photo_received: '사진 수신 완료',
-    observation_received: '사진 수신 완료',
+    received: '',
+    photo_received: '',
+    observation_received: '',
     queued: 'AI 생성 대기 중',
     draft: 'AI 생성 대기 중',
     ai_generating: 'AI 기사 생성 중',
