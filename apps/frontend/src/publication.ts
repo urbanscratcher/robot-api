@@ -23,6 +23,10 @@ type UpdateHandler = (update: PublicationUpdate) => void
 
 const normalizeStatus = (status: string) => status.trim().toLowerCase().replace(/[\s-]+/g, '_')
 export const isPublished = (status: string) => normalizeStatus(status) === 'published'
+export const isPublicationHandedOff = (status: string) =>
+  ['review_required', 'needs_review', 'ready_for_publish'].includes(normalizeStatus(status))
+
+const isTerminalForCapture = (status: string) => isPublished(status) || isPublicationHandedOff(status)
 
 export function publicationStage(publication: PublicationStatus) {
   const status = normalizeStatus(publication.status)
@@ -103,7 +107,9 @@ async function waitForPublication(eventId: string, signal: AbortSignal, onUpdate
       // 재연결 전에 현재 상태를 조회하므로 연결이 끊긴 사이의 published도 놓치지 않는다.
       const current = await getPublication(eventId, signal)
       onUpdate?.({ kind: 'status', publication: current })
-      if (isPublished(current.status)) return current
+      // 검토 대기부터는 게시 관리자에게 작업이 넘어간 상태다. 외부에서 수동 게시하면 이
+      // 이벤트가 published로 갱신되지 않을 수 있으므로 촬영 단말을 계속 붙잡아 두지 않는다.
+      if (isTerminalForCapture(current.status)) return current
 
       const response = await fetch(`${PUBLICATIONS_URL}/${encodeURIComponent(eventId)}/events`, {
         headers: { ...headers(), Accept: 'text/event-stream' },
@@ -125,7 +131,7 @@ async function waitForPublication(eventId: string, signal: AbortSignal, onUpdate
           buffer = buffer.slice(boundary + 2)
           if (publication) {
             onUpdate?.({ kind: 'status', publication })
-            if (isPublished(publication.status)) return publication
+            if (isTerminalForCapture(publication.status)) return publication
           }
           boundary = buffer.indexOf('\n\n')
         }
@@ -141,7 +147,8 @@ async function waitForPublication(eventId: string, signal: AbortSignal, onUpdate
   throw signal.reason
 }
 
-// 한 번의 취재에서 사진별 eventId가 생긴다. 실제 게시된 작업이 확인되면 나머지 연결을 닫는다.
+// 한 번의 취재에서 사진별 eventId가 생긴다. 게시 완료 또는 관리자 검토 단계로 넘어가면
+// 촬영 단말의 역할은 끝났으므로 나머지 연결을 닫는다.
 export async function waitForAnyPublication(eventIds: string[], signal?: AbortSignal, onUpdate?: UpdateHandler) {
   if (!eventIds.length) throw new Error('no publication event')
   const controller = new AbortController()

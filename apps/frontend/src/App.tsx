@@ -7,6 +7,7 @@ import { sendObservation, sendTranscript } from './observation'
 import { startListening, type SpeechSession } from './speech'
 import {
   isPublicationProblem,
+  isPublished,
   publicationStage,
   waitForAnyPublication,
   type PublicationConnection,
@@ -220,11 +221,16 @@ export default function App() {
     const controller = new AbortController()
     publicationAbortRef.current = controller
     try {
-      const published = await waitForAnyPublication(publicationEventIds, controller.signal, (update) => {
+      const completed = await waitForAnyPublication(publicationEventIds, controller.signal, (update) => {
         if (update.kind === 'connection') setPublicationConnection(update.connection)
         else setPublication(update.publication)
       })
-      setCapture({ kind: 'ok', message: `게시 완료 · ${published.eventId}` })
+      setCapture({
+        kind: 'ok',
+        message: isPublished(completed.status)
+          ? `게시 완료 · ${completed.eventId}`
+          : `게시 관리자 전달 완료 · ${completed.eventId}`,
+      })
     } catch {
       if (!controller.signal.aborted) setCapture({ kind: 'error', message: '게시 확인 연결 실패' })
       return
