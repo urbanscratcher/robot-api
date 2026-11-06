@@ -1,6 +1,16 @@
-# ROBOT FACE
+# ROBOT FACE MONOREPO
 
-가로로 장착한 iPhone을 이동형 로봇의 얼굴로 사용하는 작은 React PoC입니다. 평소에는 웃는 표정을 유지하고, 화면을 탭하면 브라운관 TV를 툭 쳤을 때처럼 화면이 찢어지고 RGB 신호가 어긋나는 짧은 글리치 뒤 녹음이 재생되는 동안 아픈 표정으로 바뀝니다. 첫 탭에서 전면 카메라와 화면 깨우기 권한을 요청합니다.
+가로로 장착한 iPhone을 이동형 로봇의 얼굴로 사용하는 React 프론트엔드와, 향후 로봇 기능을 연결할 Node.js API를 함께 관리하는 TypeScript 모노레포입니다. 평소에는 웃는 표정을 유지하고, 화면을 탭하면 짧은 글리치 뒤 녹음이 재생되는 동안 아픈 표정으로 바뀝니다.
+
+## 프로젝트 구조
+
+```text
+apps/
+├── frontend/  # React + Vite UI, Nginx 설정과 Dockerfile
+└── backend/   # Node.js TypeScript API와 Dockerfile
+```
+
+루트의 npm workspaces가 두 앱의 의존성과 명령을 관리합니다. 개발 환경에서는 Vite가 `/api`를 `localhost:3000`으로 전달하고, Docker 환경에서는 프론트 Nginx가 같은 경로를 `backend:3000`으로 전달합니다.
 
 일반 얼굴 화면을 탭하면 `public/audio`에 포함된 사용자 녹음 5개 중 하나를 무작위로 재생합니다. 바로 직전에 나온 녹음은 연속으로 다시 선택하지 않습니다. 소리가 들리지 않으면 iPhone의 음량과 무음 모드 설정을 확인하세요.
 
@@ -13,11 +23,13 @@ npm install
 npm run dev
 ```
 
+프론트엔드는 `http://localhost:5173`, 백엔드는 `http://localhost:3000`에서 실행됩니다. 각각만 실행하려면 `npm run dev:frontend` 또는 `npm run dev:backend`를 사용하세요. 백엔드 연결은 `GET /api/health`로 확인할 수 있습니다.
+
 개발 서버에서는 오른쪽 아래에 카메라 상태가 표시됩니다. 프로덕션 빌드에서는 이 표시가 제거됩니다.
 
 ## 프레임 캡처
 
-`useCamera()`가 `captureFrame(): Promise<Blob | null>`을 제공합니다. 현재 앱은 향후 연동을 위해 같은 함수를 `window.captureFrame()`에도 노출합니다. 카메라 프레임을 읽을 수 없으면 `null`, 준비되면 JPEG `Blob`을 반환하며 서버로 전송하지 않습니다.
+`apps/frontend/src/hooks/useCamera.ts`의 `useCamera()`가 `captureFrame(): Promise<Blob | null>`을 제공합니다. 현재 앱은 향후 연동을 위해 같은 함수를 `window.captureFrame()`에도 노출합니다. 카메라 프레임을 읽을 수 없으면 `null`, 준비되면 JPEG `Blob`을 반환하며 서버로 전송하지 않습니다.
 
 ## Docker 배포
 
@@ -27,7 +39,7 @@ docker compose ps
 curl -I http://localhost:8080
 ```
 
-컨테이너는 Nginx의 80번 포트를 사용하고 호스트의 8080번에 연결됩니다. 기존 리버스 프록시에서 `http://lab:8080` 또는 해당 Docker 호스트의 `8080`으로 프록시하고 TLS 인증서를 적용하세요. 예: `https://robot.example.com`.
+Compose는 `frontend`와 `backend` 컨테이너를 함께 빌드합니다. 외부에는 프론트 Nginx만 호스트의 8080번으로 노출되고 백엔드는 내부 Docker 네트워크에서 연결됩니다. 기존 리버스 프록시에서 `http://lab:8080`으로 프록시하고 TLS 인증서를 적용하세요.
 
 카메라와 Wake Lock은 보안 컨텍스트가 필요하므로 iPhone에서는 반드시 HTTPS 도메인으로 접속해야 합니다. `localhost` 예외는 iPhone에서 원격 홈서버에 적용되지 않습니다.
 

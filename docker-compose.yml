@@ -1,12 +1,26 @@
 services:
-  robot-face:
-    build: .
-    container_name: robot-face
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: robot-face-frontend
     ports:
       - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
     networks:
       - default
       - proxy
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: robot-face-backend
+    environment:
+      PORT: 3000
     restart: unless-stopped
 
 networks:
