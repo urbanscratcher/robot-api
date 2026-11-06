@@ -213,6 +213,34 @@ body {
   animation: surprise-pop 2.8s cubic-bezier(.34,1.56,.64,1) infinite;
 }
 
+/* AI가 기사를 쓰는 동안: 눈을 위로 굴리고 입을 한쪽으로 오므린 생각하는 표정 */
+.expression-thinking .eyes {
+  gap: clamp(3.3rem, 13dvw, 11rem);
+  transform: translateY(-2dvh) rotate(-2deg);
+}
+.expression-thinking .eye {
+  width: clamp(7.5rem, 21dvw, 21rem);
+  height: clamp(7rem, 34dvh, 18rem);
+  border-radius: 50% 50% 42% 42%;
+  animation: thinking-look 2.6s ease-in-out infinite;
+}
+.expression-thinking .eye-right { animation-delay: .08s; }
+.expression-thinking .cheek { opacity: .45; }
+.expression-thinking .mouth {
+  width: clamp(4.5rem, 17vmin, 8rem);
+  transform: translateX(38%);
+  animation: thinking-mouth 2.6s ease-in-out infinite;
+}
+
+@keyframes thinking-look {
+  0%, 100% { transform: translate(10%, -10%) scaleY(.82); }
+  45%, 70% { transform: translate(-8%, -16%) scaleY(.72); }
+}
+@keyframes thinking-mouth {
+  0%, 100% { transform: translateX(38%) rotate(-5deg) scale(.9, .8); }
+  50% { transform: translateX(28%) rotate(4deg) scale(1, 1.05); }
+}
+
 .expression-hurt .eyes {
   gap: clamp(3.5rem, 14dvw, 12rem);
   animation: hurt-shiver .13s linear infinite;

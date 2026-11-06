@@ -6,6 +6,7 @@ import { usePersonDetector } from './hooks/usePersonDetector'
 import { sendObservation, sendTranscript } from './observation'
 import { startListening, type SpeechSession } from './speech'
 import {
+  isArticleGenerating,
   isPublicationProblem,
   isPublished,
   publicationStage,
@@ -331,6 +332,9 @@ export default function App() {
     : visit.phase === 'processing'
       ? publicationText
       : capture.message
+  const articleGenerating = visit.phase === 'processing'
+    && Boolean(publication && isArticleGenerating(publication.status))
+  const faceExpression: Expression = articleGenerating && expression !== 'hurt' ? 'thinking' : expression
 
   useEffect(() => {
     audioPlayersRef.current = HURT_VOICES.map(({ source }) => {
@@ -375,7 +379,7 @@ export default function App() {
         className={`face-stage${glitching ? ' is-glitching' : ''}`}
         style={glitching ? { animationName: glitchKey % 2 ? 'glitch-hit-a' : 'glitch-hit-b' } : undefined}
       >
-        <RobotFace expression={expression} recording={visit.phase === 'running'} />
+        <RobotFace expression={faceExpression} recording={visit.phase === 'running'} />
       </div>
       {hurtBubble && (
         <div key={`${glitchKey}-${hurtBubble}`} className="hurt-bubble" role="status" aria-live="assertive">
@@ -384,7 +388,7 @@ export default function App() {
       )}
       {glitching && <div key={glitchKey} className="glitch-overlay" aria-hidden="true" />}
       {import.meta.env.DEV && <div className={`camera-status status-${status}`}>camera: {status}</div>}
-      {visit.phase === 'processing' && (
+      {visit.phase === 'processing' && !articleGenerating && (
         <div
           className={`publication-stage${publication && isPublicationProblem(publication.status) ? ' is-problem' : ''}`}
           role="status"

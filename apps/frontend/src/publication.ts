@@ -25,6 +25,8 @@ const normalizeStatus = (status: string) => status.trim().toLowerCase().replace(
 export const isPublished = (status: string) => normalizeStatus(status) === 'published'
 export const isPublicationHandedOff = (status: string) =>
   ['review_required', 'needs_review', 'ready_for_publish'].includes(normalizeStatus(status))
+export const isArticleGenerating = (status: string) =>
+  ['ai_generating', 'generating', 'article_generating', 'generating_article'].includes(normalizeStatus(status))
 
 const isTerminalForCapture = (status: string) => isPublished(status) || isPublicationHandedOff(status)
 

@@ -1,4 +1,4 @@
-export type Expression = 'idle' | 'curious' | 'happy' | 'surprised' | 'hurt'
+export type Expression = 'idle' | 'curious' | 'happy' | 'surprised' | 'thinking' | 'hurt'
 
 interface RobotFaceProps {
   expression: Expression
@@ -33,7 +33,13 @@ function Mouth({ shape }: { shape: MouthShape }) {
 }
 
 export function RobotFace({ expression, recording = false }: RobotFaceProps) {
-  const mouth: MouthShape = recording ? 'grin' : expression === 'hurt' ? 'wobble' : expression === 'surprised' ? 'o' : 'cat'
+  const mouth: MouthShape = recording
+    ? 'grin'
+    : expression === 'hurt' || expression === 'thinking'
+      ? 'wobble'
+      : expression === 'surprised'
+        ? 'o'
+        : 'cat'
   return (
     <div
       className={`robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
