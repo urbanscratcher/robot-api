@@ -46,6 +46,12 @@ export default function App() {
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null)
   const { videoRef, status, startCamera, stopCamera, captureFrame } = useCamera()
 
+  // 관리자 패널은 카메라 상태를 확인하는 도구일 뿐이다. 앱이 열리면 패널을 거치지
+  // 않고 바로 카메라와 사람 인식을 준비하고, 권한 요청이 막히면 기존처럼 첫 터치에서 재시도한다.
+  useEffect(() => {
+    void startCamera()
+  }, [startCamera])
+
   const requestWakeLock = useCallback(async () => {
     if (document.visibilityState !== 'visible' || wakeLockRef.current) return
     const wakeLock = (navigator as Navigator & { wakeLock?: { request(type: 'screen'): Promise<WakeLockSentinelLike> } }).wakeLock

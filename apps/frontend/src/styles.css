@@ -289,7 +289,7 @@ body {
   position: fixed;
   z-index: 20;
   inset: max(.6rem, env(safe-area-inset-top)) max(.6rem, env(safe-area-inset-right)) max(.6rem, env(safe-area-inset-bottom)) max(.6rem, env(safe-area-inset-left));
-  display: none;
+  display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: clamp(.75rem, 2.4dvh, 1.25rem);
   width: min(calc(100dvw - 1.2rem), 56rem);
@@ -305,8 +305,15 @@ body {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   cursor: default;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.985);
 }
-.admin-panel.is-open { display: grid; }
+.admin-panel.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
 
 .admin-header {
   display: grid;
