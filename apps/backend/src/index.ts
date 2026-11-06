@@ -6,6 +6,15 @@ const port = Number(process.env.PORT ?? 3000)
 const HURT_TOKEN = process.env.HURT_TOKEN ?? ''
 // 피에조가 한 번 맞을 때 여러 번 튀는 것을 하나로 묶는 시간(ms)
 const HURT_COOLDOWN_MS = 300
+const PIEZO_MIN_LEVEL = 300
+const PIEZO_STRONG_LEVEL = 800
+
+type PiezoStage = 1 | 2
+
+function piezoStage(level: number): PiezoStage | null {
+  if (level < PIEZO_MIN_LEVEL) return null
+  return level < PIEZO_STRONG_LEVEL ? 1 : 2
+}
 
 // 얼굴 페이지들(SSE 연결). /api/hurt 가 오면 모두에게 'hurt' 이벤트를 보낸다.
 const listeners = new Set<ServerResponse>()
@@ -75,15 +84,25 @@ const server = createServer(async (request, response) => {
     } catch {
       // 본문이 JSON이 아니어도 충격으로 처리한다.
     }
+    if (level === undefined || !Number.isFinite(level)) {
+      json(response, 400, { error: 'numeric level required' })
+      return
+    }
+    const stage = piezoStage(level)
+    if (!stage) {
+      json(response, 200, { ok: true, skipped: 'below_threshold', level })
+      return
+    }
+    const strength = stage === 1 ? 'weak' : 'strong'
     const now = Date.now()
     if (now - lastHurtAt < HURT_COOLDOWN_MS) {
       json(response, 200, { ok: true, skipped: 'cooldown', listeners: listeners.size })
       return
     }
     lastHurtAt = now
-    broadcast('hurt', { level, at: new Date(now).toISOString() })
-    console.log(`[hurt] level=${level ?? '-'} listeners=${listeners.size}`)
-    json(response, 200, { ok: true, listeners: listeners.size })
+    broadcast('hurt', { level, stage, strength, at: new Date(now).toISOString() })
+    console.log(`[hurt] level=${level} stage=${stage} strength=${strength} listeners=${listeners.size}`)
+    json(response, 200, { ok: true, level, stage, strength, listeners: listeners.size })
     return
   }
 

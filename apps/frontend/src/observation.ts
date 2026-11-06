@@ -9,6 +9,7 @@ export interface Observation {
 
 export interface ObservationParts {
   image?: Blob | null
+  sensors?: Record<string, unknown>
 }
 
 const pad = (value: number, length = 2) => String(value).padStart(length, '0')
@@ -51,7 +52,7 @@ export async function buildObservation(parts: ObservationParts, capturedAt = new
   const observation: Observation = {
     eventId: nextEventId(capturedAt),
     capturedAt: localIsoString(capturedAt),
-    sensors: {},
+    sensors: parts.sensors ?? {},
   }
   if (parts.image) observation.image = await blobToDataUrl(parts.image)
   return observation

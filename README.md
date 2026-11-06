@@ -65,6 +65,10 @@ Content-Type: application/json      (본문은 선택)
 {"level": 812}
 ```
 
+- `300` 미만: 노이즈로 무시
+- `300` 이상 `800` 미만: 1단계 (`weak`)
+- `800` 이상: 2단계 (`strong`)
+
 - 응답: `{"ok":true,"listeners":1}`. `listeners`는 지금 연결된 얼굴 페이지 수입니다. 0이면 페이지가 열려 있지 않은 것입니다.
 - 0.3초 안에 다시 오면 한 번으로 칩니다(`"skipped":"cooldown"`).
 - `HURT_TOKEN` 환경변수를 설정하면 `Authorization: Bearer <토큰>`이 필요합니다. 설정하지 않으면 누구나 부를 수 있습니다.

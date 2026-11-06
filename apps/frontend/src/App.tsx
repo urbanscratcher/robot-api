@@ -16,6 +16,7 @@ import {
 
 type CaptureState = { kind: 'idle' | 'busy' | 'ok' | 'error'; message: string }
 type VisitState = { phase: 'idle' | 'running' | 'processing'; photos: number; until: number; eventId?: string }
+type PiezoReading = { level: number; stage: 1 | 2; strength: 'weak' | 'strong' }
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 const VOICE_FILES = [
@@ -120,11 +121,24 @@ export default function App() {
 
   // ESP32 피에조 충격: 서버(/api/events)가 'hurt'를 보내면 탭한 것처럼 아파한다.
   const [hurtLink, setHurtLink] = useState<'connecting' | 'open' | 'closed'>('connecting')
+  const [piezo, setPiezo] = useState<PiezoReading | null>(null)
+  const piezoRef = useRef<PiezoReading | null>(null)
   useEffect(() => {
     const events = new EventSource('/api/events')
     events.onopen = () => setHurtLink('open')
     events.onerror = () => setHurtLink(events.readyState === EventSource.CLOSED ? 'closed' : 'connecting')
-    events.addEventListener('hurt', () => triggerHurt())
+    events.addEventListener('hurt', (event) => {
+      try {
+        const reading = JSON.parse((event as MessageEvent<string>).data) as PiezoReading
+        if (typeof reading.level === 'number' && (reading.stage === 1 || reading.stage === 2)) {
+          piezoRef.current = reading
+          setPiezo(reading)
+        }
+      } catch {
+        // 예전 서버 형식이어도 아픈 반응 자체는 유지한다.
+      }
+      triggerHurt()
+    })
     return () => events.close()
   }, [triggerHurt])
 
@@ -180,7 +194,15 @@ export default function App() {
       const photo = await captureFrame()
       if (!photo) return
       try {
-        const { response, eventId } = await sendObservation({ image: photo })
+        const reading = piezoRef.current
+        const { response, eventId } = await sendObservation({
+          image: photo,
+          sensors: reading ? {
+            piezo: reading.level,
+            piezoLevel: reading.stage,
+            piezoStrength: reading.strength,
+          } : {},
+        })
         if (response.ok) {
           publicationEventIds.push(eventId)
           photosSent += 1
@@ -329,6 +351,7 @@ export default function App() {
             <div>
               <p className="admin-kicker">
                 ROBOT FACE · 피에조 {hurtLink === 'open' ? '연결됨' : hurtLink === 'connecting' ? '연결 중' : '끊김'}
+                {piezo ? ` · ${piezo.stage}단계 ${piezo.level}` : ''}
               </p>
               <h1>관리자 패널</h1>
             </div>
