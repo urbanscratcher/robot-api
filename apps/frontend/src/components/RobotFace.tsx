@@ -2,65 +2,61 @@ export type Expression = 'happy' | 'surprised' | 'thinking' | 'hurt'
 
 interface RobotFaceProps {
   expression: Expression
-  // 취재(사진·녹음) 중이면 반전: 빨간 눈 + 치켜 올라간 눈썹 + 톱니 이빨로 씩 웃는 입.
-  // 앞에 있는 사람에게 지금 녹화(엿듣기) 중임을 알린다.
   recording?: boolean
 }
 
-type MouthShape = 'cat' | 'thinking' | 'wobble' | 'o' | 'grin'
+function PixelFeatures({ expression, recording }: RobotFaceProps) {
+  if (recording) return (
+    <g className="pixel-features pixel-features-recording">
+      <path d="M9 7h5v2H9zM18 7h5v2h-5zM10 10h3v3h-3zM19 10h3v3h-3z" />
+      <path d="M10 16h2v-1h2v1h4v-1h2v1h2v3H10z" />
+      <path className="pixel-cutout" d="M13 17h2v1h-2zM17 17h2v1h-2z" />
+    </g>
+  )
 
-function Mouth({ shape }: { shape: MouthShape }) {
-  const line = { fill: 'none', stroke: 'currentColor', strokeWidth: 6, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
+  if (expression === 'surprised') return (
+    <g className="pixel-features">
+      <path d="M9 7h2V6h2v1h2v5H9zM17 7h2V6h2v1h2v5h-6z" />
+      <path d="M12 15h8v6h-8z" />
+      <path className="pixel-cutout" d="M14 17h4v2h-4z" />
+    </g>
+  )
+
+  if (expression === 'thinking') return (
+    <g className="pixel-features">
+      <path d="M8 8h6v2H8zM19 7h3v6h-3zM24 5h2v2h-2zM26 3h2v2h-2z" />
+      <path d="M11 17h3v-1h7v2h-7v1h-3z" />
+    </g>
+  )
+
+  if (expression === 'hurt') return (
+    <g className="pixel-features">
+      <path d="M8 6h2v2h2V6h2v2h-2v2h2v2h-2v-2h-2v2H8v-2h2V8H8zM18 6h2v2h2V6h2v2h-2v2h2v2h-2v-2h-2v2h-2v-2h2V8h-2z" />
+      <path d="M10 16h2v-1h2v1h4v-1h2v1h2v3h-2v1h-2v-1h-4v1h-2v-1h-2z" />
+    </g>
+  )
+
   return (
-    <svg className={`mouth mouth-${shape}`} viewBox="0 0 120 60" aria-hidden="true">
-      {shape === 'cat' && <path {...line} d="M27 21 Q43 42 60 25 Q77 42 93 21" />}
-      {shape === 'thinking' && <path {...line} d="M31 28 Q47 19 62 29 Q77 38 91 27" />}
-      {shape === 'wobble' && <path {...line} d="M25 31 Q36 18 47 31 T69 31 T91 31" />}
-      {shape === 'o' && <ellipse cx="60" cy="31" rx="11" ry="14" fill="none" stroke="currentColor" strokeWidth="6" />}
-      {shape === 'grin' && (
-        <>
-          <path d="M18 15 Q60 64 102 15 Q60 30 18 15 Z" fill="currentColor" />
-          <path
-            d="M27 20 L34 29 L42 22 L51 33 L60 24 L69 33 L78 22 L86 29 L93 20"
-            fill="none"
-            stroke="#000"
-            strokeWidth="4"
-            strokeLinejoin="round"
-          />
-        </>
-      )}
-    </svg>
+    <g className="pixel-features">
+      <path d="M10 7h3v6h-3zM19 7h3v6h-3z" />
+      <path d="M11 17h2v1h6v-1h2v2h-2v1h-6v-1h-2z" />
+    </g>
   )
 }
 
 export function RobotFace({ expression, recording = false }: RobotFaceProps) {
-  const mouth: MouthShape = recording
-    ? 'grin'
-    : expression === 'hurt'
-      ? 'wobble'
-      : expression === 'thinking'
-        ? 'thinking'
-      : expression === 'surprised'
-        ? 'o'
-        : 'cat'
   return (
     <div
-      className={`robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
+      className={`robot-face pixel-robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
       aria-label={`Robot expression: ${expression}${recording ? ' (recording)' : ''}`}
     >
-      <div className="eyes" aria-hidden="true">
-        <div className="eye-slot eye-slot-left">
-          <span className="brow" />
-          <div className="eye eye-left"><span className="eye-shine" /></div>
-          <span className="cheek" />
-        </div>
-        <div className="eye-slot eye-slot-right">
-          <span className="brow" />
-          <div className="eye eye-right"><span className="eye-shine" /></div>
-          <span className="cheek" />
-        </div>
-      </div>
-      <Mouth shape={mouth} />
+      <svg className="pixel-face-svg" viewBox="0 0 32 24" role="img" aria-hidden="true" shapeRendering="crispEdges">
+        <path
+          className="pixel-head"
+          d="M8 1h16v1h3v2h2v3h2v10h-2v3h-2v2h-3v1H8v-1H5v-2H3v-3H1V7h2V4h2V2h3z"
+        />
+        <PixelFeatures expression={expression} recording={recording} />
+      </svg>
     </div>
   )
 }

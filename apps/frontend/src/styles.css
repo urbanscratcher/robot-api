@@ -184,6 +184,17 @@ body {
   opacity: .92;
 }
 
+.eye-shine-lower {
+  position: absolute;
+  left: 20%;
+  bottom: 17%;
+  width: 60%;
+  height: 12%;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  transform: rotate(-4deg);
+}
+
 .expression-happy .eyes { gap: clamp(5rem, 18dvw, 15rem); }
 .expression-happy .eye {
   width: clamp(3.6rem, 9dvw, 8rem);
@@ -209,6 +220,18 @@ body {
   animation: happy-bob 3.6s ease-in-out infinite;
 }
 .expression-thinking .eye-right { transform: scaleY(.72) rotate(-8deg); }
+.expression-thinking .brow,
+.expression-surprised .brow {
+  opacity: 1;
+  width: 62%;
+  height: clamp(.35rem, 1.1vmin, .7rem);
+  background: var(--eye-color);
+  box-shadow: none;
+}
+.expression-thinking .eye-slot-left .brow { transform: rotate(-8deg); }
+.expression-thinking .eye-slot-right .brow { transform: rotate(8deg); }
+.expression-surprised .eye-slot-left .brow { transform: rotate(8deg); }
+.expression-surprised .eye-slot-right .brow { transform: rotate(-8deg); }
 .expression-thinking .mouth {
   animation: thinking-mouth 2.2s ease-in-out infinite;
 }
@@ -245,6 +268,7 @@ body {
 }
 .expression-hurt .eye::after { transform: translate(-50%, -50%) rotate(-45deg); }
 .expression-hurt .eye-shine { display: none; }
+.expression-hurt .eye-shine-lower { display: none; }
 
 /* ── 귀여운 얼굴: 볼터치 · 입 · (녹화 때만) 눈썹 ───────────────── */
 .eye-slot {
@@ -285,17 +309,31 @@ body {
   z-index: 1;
   display: block;
   width: clamp(4rem, 15vmin, 7.5rem);
-  margin-top: clamp(.75rem, 4vmin, 2.25rem);
+  margin-top: clamp(.3rem, 1.8vmin, 1rem);
   color: var(--eye-color);
   filter: none;
   overflow: visible;
 }
 .mouth-cat { animation: happy-bob 3.6s ease-in-out infinite; }
-.mouth-wobble { animation: mouth-wobble .26s ease-in-out infinite alternate; }
+.mouth-clench { animation: mouth-wobble .26s ease-in-out infinite alternate; }
 @keyframes mouth-wobble {
   from { transform: translateX(-3%) scaleY(.85); }
   to { transform: translateX(3%) scaleY(1.1); }
 }
+
+.nose {
+  position: relative;
+  z-index: 2;
+  width: clamp(.38rem, 1.25vmin, .68rem);
+  height: clamp(.28rem, .8vmin, .46rem);
+  margin-top: clamp(.8rem, 3vmin, 1.6rem);
+  border-radius: 999px;
+  background: var(--eye-color);
+  transform: rotate(-4deg);
+}
+
+.expression-hurt .nose { transform: translateY(.12rem) rotate(4deg); }
+.robot-face.is-recording .nose { background: var(--eye-color); }
 
 /* 반전: 녹화 중에는 볼터치가 사라지고 눈썹이 치켜 올라가며, 톱니 이빨로 씩 웃는다 */
 .robot-face.is-recording .cheek { opacity: 0; }
@@ -324,6 +362,81 @@ body {
 @keyframes rec-glow {
   0%, 100% { filter: drop-shadow(0 0 .6rem rgba(255,43,43,.55)); }
   50% { filter: drop-shadow(0 0 1.8rem rgba(255,43,43,.9)) brightness(1.12); }
+}
+
+/* ── 픽셀 이모지 얼굴 ─────────────────────────────────────────── */
+.pixel-robot-face {
+  --pixel-ink: #171717;
+  --pixel-paper: #fffefa;
+  background: #f7f4ec;
+}
+
+.pixel-robot-face::after { display: none; }
+
+.pixel-face-svg {
+  width: min(82dvw, 78dvh);
+  height: auto;
+  overflow: visible;
+  color: var(--pixel-ink);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(clamp(.35rem, 1.2vmin, .8rem) clamp(.45rem, 1.5vmin, 1rem) 0 rgba(80, 66, 48, .13));
+}
+
+.pixel-head {
+  fill: var(--pixel-paper);
+  stroke: var(--pixel-ink);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.pixel-features { fill: var(--pixel-ink); }
+.pixel-cutout { fill: var(--pixel-paper); }
+
+.pixel-robot-face.is-recording {
+  --pixel-ink: #dc2f35;
+  --pixel-paper: #fff7ef;
+  background: #f7f4ec;
+}
+
+.pixel-robot-face.is-recording .pixel-face-svg {
+  animation: pixel-recording-pulse 1.2s steps(2, end) infinite;
+}
+
+@keyframes pixel-recording-pulse {
+  50% { filter: drop-shadow(0 0 1.2rem rgba(220,47,53,.38)); }
+}
+
+.pixel-robot-face.expression-hurt .pixel-face-svg {
+  animation: pixel-hurt-shake .18s steps(2, end) infinite;
+}
+
+@keyframes pixel-hurt-shake {
+  0%, 100% { transform: translateX(-.35%); }
+  50% { transform: translateX(.35%); }
+}
+
+.hurt-bubble {
+  top: auto;
+  bottom: max(7dvh, calc(env(safe-area-inset-bottom) + 1rem));
+  width: min(82dvw, 42rem);
+  max-width: none;
+  padding: clamp(.8rem, 2.2vmin, 1.15rem) clamp(1.2rem, 3.6vmin, 2rem);
+  border: clamp(3px, .55vmin, 5px) solid #171717;
+  border-radius: 0;
+  background: #fffefa;
+  box-shadow:
+    clamp(.35rem, 1vmin, .65rem) clamp(.35rem, 1vmin, .65rem) 0 #171717,
+    inset 0 0 0 clamp(2px, .3vmin, 3px) #fffefa,
+    inset 0 0 0 clamp(4px, .65vmin, 7px) #171717;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: -.08em;
+  clip-path: polygon(.45rem 0, calc(100% - .45rem) 0, calc(100% - .45rem) .22rem, 100% .22rem, 100% calc(100% - .45rem), calc(100% - .45rem) calc(100% - .45rem), calc(100% - .45rem) 100%, .45rem 100%, .45rem calc(100% - .22rem), 0 calc(100% - .22rem), 0 .45rem, .45rem .45rem);
+  animation-timing-function: steps(3, end);
+}
+
+.hurt-bubble::after {
+  display: none;
 }
 
 .camera-video {
