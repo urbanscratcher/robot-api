@@ -924,8 +924,10 @@ body {
 .eye-shine { opacity: 0; }
 
 .expression-happy .eyes,
+.expression-wink .eyes,
 .expression-thinking .eyes { gap: clamp(3.3rem, 14dvw, 12rem); }
 .expression-happy .eye,
+.expression-wink .eye,
 .expression-thinking .eye {
   width: clamp(7.5rem, 22dvw, 22rem);
   height: clamp(5rem, 24dvh, 12rem);
@@ -934,6 +936,39 @@ body {
   box-shadow: inset 0 clamp(1.4rem, 7dvh, 4rem) 0 var(--eye-color);
   animation: happy-bob 2.2s ease-in-out infinite;
   overflow: visible;
+}
+
+/* 인스타그램 게시 중: 웃는 얼굴을 유지하면서 오른쪽 눈만 감는다. */
+.expression-wink .eye-right {
+  height: clamp(.7rem, 3dvh, 1.5rem);
+  border-radius: 999px;
+  background: var(--eye-color);
+  box-shadow: 0 0 1.3rem var(--eye-glow);
+  transform: rotate(-8deg);
+}
+
+.expression-thinking .eye {
+  height: clamp(.7rem, 3dvh, 1.5rem);
+  border-radius: 999px;
+  background: var(--eye-color);
+  box-shadow: 0 0 1.3rem var(--eye-glow);
+  animation: focus-breathe 2.8s ease-in-out infinite;
+}
+.expression-thinking .eye-left { transform: rotate(9deg); }
+.expression-thinking .eye-right { transform: rotate(-9deg); }
+.expression-thinking .eye-slot-left .brow { transform: translateY(18%) rotate(11deg); }
+.expression-thinking .eye-slot-right .brow { transform: translateY(18%) rotate(-11deg); }
+.expression-thinking .mouth {
+  width: clamp(4rem, 16vmin, 7rem);
+  animation: focus-mouth 2.8s ease-in-out infinite;
+}
+
+@keyframes focus-breathe {
+  50% { scale: .94 1; }
+}
+
+@keyframes focus-mouth {
+  50% { transform: scaleX(.94); }
 }
 
 .expression-surprised .eyes { gap: clamp(3rem, 11dvw, 9rem); }

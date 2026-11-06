@@ -1,4 +1,4 @@
-export type Expression = 'happy' | 'surprised' | 'thinking' | 'hurt'
+export type Expression = 'happy' | 'wink' | 'surprised' | 'thinking' | 'hurt'
 
 interface RobotFaceProps {
   expression: Expression
@@ -12,7 +12,7 @@ function Mouth({ shape }: { shape: MouthShape }) {
   return (
     <svg className={`mouth mouth-${shape}`} viewBox="0 0 120 60" aria-hidden="true">
       {shape === 'cat' && <path {...line} d="M27 21 Q43 42 60 25 Q77 42 93 21" />}
-      {shape === 'thinking' && <path {...line} d="M31 28 Q47 19 62 29 Q77 38 91 27" />}
+      {shape === 'thinking' && <path {...line} d="M39 20 L60 43 L81 20 Z" />}
       {shape === 'wobble' && <path {...line} d="M25 31 Q36 18 47 31 T69 31 T91 31" />}
       {shape === 'o' && <ellipse cx="60" cy="31" rx="11" ry="14" fill="none" stroke="currentColor" strokeWidth="6" />}
       {shape === 'grin' && (
