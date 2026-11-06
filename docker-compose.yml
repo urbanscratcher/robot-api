@@ -26,11 +26,8 @@ services:
       # 로봇 주행 켜짐/꺼짐을 저장하는 파일 (다시 배포해도 유지되도록 볼륨에 둔다)
       ROBOT_STATE_FILE: /app/data/robot-state.json
     volumes:
-      - robot-data:/app/data
+      - /mnt/data/cam:/app/data
     restart: unless-stopped
-
-volumes:
-  robot-data:
 
 networks:
   proxy:
