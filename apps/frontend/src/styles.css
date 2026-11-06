@@ -36,6 +36,8 @@ body {
 }
 
 .robot-face {
+  --eye-color: #fff;
+  --eye-glow: rgba(255,255,255,.18);
   position: relative;
   display: grid;
   place-items: center;
@@ -116,8 +118,8 @@ body {
   max-height: 58dvw;
   overflow: hidden;
   border-radius: 48% 48% 46% 46% / 43% 43% 53% 53%;
-  background: #fff;
-  box-shadow: 0 0 1.3rem rgba(255,255,255,.18), inset 0 -1rem 2rem rgba(185,215,255,.09);
+  background: var(--eye-color);
+  box-shadow: 0 0 1.3rem var(--eye-glow), inset 0 -1rem 2rem rgba(185,215,255,.09);
   transform-origin: 50% 50%;
   animation: idle-look 9s cubic-bezier(.45,0,.2,1) infinite, blink 6.4s ease-in-out infinite;
 }
@@ -149,7 +151,7 @@ body {
   height: clamp(5rem, 24dvh, 12rem);
   border-radius: 50% 50% 10% 10% / 100% 100% 8% 8%;
   background: transparent;
-  box-shadow: inset 0 clamp(1.4rem, 7dvh, 4rem) 0 #fff;
+  box-shadow: inset 0 clamp(1.4rem, 7dvh, 4rem) 0 var(--eye-color);
   animation: happy-bob 2.2s ease-in-out infinite;
   overflow: visible;
 }
@@ -185,12 +187,25 @@ body {
   width: 24%;
   height: 108%;
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 0 1.2rem rgba(255,255,255,.16);
+  background: var(--eye-color);
+  box-shadow: 0 0 1.2rem var(--eye-glow);
   transform: translate(-50%, -50%) rotate(45deg);
 }
 .expression-hurt .eye::after { transform: translate(-50%, -50%) rotate(-45deg); }
 .expression-hurt .eye-shine { display: none; }
+
+/* 녹화 중(취재 20초): 눈이 빨갛게 빛나며 천천히 깜박인다 */
+.robot-face.is-recording {
+  --eye-color: #ff2b2b;
+  --eye-glow: rgba(255,43,43,.55);
+}
+.robot-face.is-recording .eyes { animation: rec-glow 1.6s ease-in-out infinite; }
+.expression-hurt.is-recording .eyes { animation: hurt-shiver .13s linear infinite, rec-glow 1.6s ease-in-out infinite; }
+.robot-face.is-recording::after { background: radial-gradient(ellipse, rgba(255,40,40,.12), transparent 70%); }
+@keyframes rec-glow {
+  0%, 100% { filter: drop-shadow(0 0 .6rem rgba(255,43,43,.55)); }
+  50% { filter: drop-shadow(0 0 1.8rem rgba(255,43,43,.9)) brightness(1.12); }
+}
 
 .camera-video {
   display: block;
