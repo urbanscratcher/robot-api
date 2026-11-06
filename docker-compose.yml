@@ -23,7 +23,14 @@ services:
       PORT: 3000
       # 설정하면 ESP32가 POST /api/hurt 할 때 Authorization: Bearer <토큰> 이 필요하다.
       HURT_TOKEN: ${HURT_TOKEN:-}
+      # 로봇 주행 켜짐/꺼짐을 저장하는 파일 (다시 배포해도 유지되도록 볼륨에 둔다)
+      ROBOT_STATE_FILE: /app/data/robot-state.json
+    volumes:
+      - robot-data:/app/data
     restart: unless-stopped
+
+volumes:
+  robot-data:
 
 networks:
   proxy:

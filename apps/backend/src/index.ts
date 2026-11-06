@@ -1,4 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 
 const port = Number(process.env.PORT ?? 3000)
 
@@ -45,14 +47,54 @@ setInterval(() => {
   for (const listener of listeners) listener.write(': ping\n\n')
 }, 15000).unref()
 
-// 로봇(ESP32) 주행 켜기/끄기. 관리자 패널이 POST로 바꾸고, ESP32는 GET으로 1초마다 확인한다.
-// 서버가 다시 시작되면 켜짐으로 돌아간다(ESP32 자체 동작과 같음).
-const robot = { driving: true, updatedAt: new Date().toISOString(), lastSeenAt: null as string | null }
+// 로봇(ESP32) 주행 켜기/끄기.
+// - driving: 관리자 패널(또는 로봇의 p·BOOT 버튼)이 정한 "켜야 하나 꺼야 하나". 파일에 저장해서
+//   서버를 다시 시작하거나 다시 배포해도 유지된다 (Docker에서는 robot-data 볼륨).
+// - reported: ESP32가 1초마다 확인하면서 알려 주는 "지금 실제로 하고 있는 것".
+// - online: 최근 5초 안에 ESP32가 확인하러 왔는지. synced: 실제가 설정과 같은지.
+const ROBOT_STATE_FILE = process.env.ROBOT_STATE_FILE ?? 'data/robot-state.json'
+type RobotReport = 'driving' | 'paused'
+const robot = {
+  driving: true,
+  updatedAt: new Date().toISOString(),
+  changedBy: 'default' as string,
+  lastSeenAt: null as string | null,
+  reported: null as RobotReport | null,
+}
+try {
+  const saved = JSON.parse(readFileSync(ROBOT_STATE_FILE, 'utf8')) as { driving?: unknown; updatedAt?: unknown; changedBy?: unknown }
+  if (typeof saved.driving === 'boolean') robot.driving = saved.driving
+  if (typeof saved.updatedAt === 'string') robot.updatedAt = saved.updatedAt
+  if (typeof saved.changedBy === 'string') robot.changedBy = saved.changedBy
+} catch {
+  // 저장된 상태가 없으면 켜짐으로 시작한다.
+}
+
+function saveRobotState() {
+  try {
+    mkdirSync(dirname(ROBOT_STATE_FILE), { recursive: true })
+    writeFileSync(ROBOT_STATE_FILE, JSON.stringify({ driving: robot.driving, updatedAt: robot.updatedAt, changedBy: robot.changedBy }))
+  } catch (error) {
+    console.warn('[robot] 상태 저장 실패', error)
+  }
+}
 
 function robotStatus() {
   const seenMsAgo = robot.lastSeenAt ? Date.now() - Date.parse(robot.lastSeenAt) : null
-  return { ...robot, online: seenMsAgo !== null && seenMsAgo < 5000 }
+  const online = seenMsAgo !== null && seenMsAgo < 5000
+  const synced = online && robot.reported === (robot.driving ? 'driving' : 'paused')
+  return { ...robot, online, synced, seenMsAgo }
 }
+
+// 로봇 연결이 끊기거나 다시 붙으면 패널에 바로 알린다.
+let lastOnline = false
+setInterval(() => {
+  const status = robotStatus()
+  if (status.online !== lastOnline) {
+    lastOnline = status.online
+    broadcast('robot', status)
+  }
+}, 1000).unref()
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
@@ -76,29 +118,44 @@ const server = createServer(async (request, response) => {
     return
   }
 
-  // 로봇 주행 상태.  GET /api/robot  (ESP32는 ?device=esp32 를 붙여서 접속 기록을 남긴다)
+  // 로봇 주행 상태.  GET /api/robot
+  // ESP32는 ?device=esp32&state=driving|paused 를 붙여서 확인한다 (접속 시각과 실제 상태를 남긴다).
   if (request.method === 'GET' && url.pathname === '/api/robot') {
-    if (url.searchParams.get('device') === 'esp32') robot.lastSeenAt = new Date().toISOString()
+    if (url.searchParams.get('device') === 'esp32') {
+      robot.lastSeenAt = new Date().toISOString()
+      const state = url.searchParams.get('state')
+      if ((state === 'driving' || state === 'paused') && state !== robot.reported) {
+        robot.reported = state
+        broadcast('robot', robotStatus())
+      }
+    }
     json(response, 200, robotStatus())
     return
   }
 
-  // 관리자 패널에서 주행 켜기/끄기.  POST /api/robot  {"driving": false}
+  // 주행 켜기/끄기.  POST /api/robot  {"driving": false, "source": "panel" | "esp32"}
+  // 관리자 패널 버튼, 또는 로봇의 p·BOOT 버튼(ESP32가 보냄)이 부른다.
   if (request.method === 'POST' && url.pathname === '/api/robot') {
-    let driving: unknown
+    let body: { driving?: unknown; source?: unknown } = {}
     try {
-      driving = (JSON.parse(await readBody(request)) as { driving?: unknown }).driving
+      body = JSON.parse(await readBody(request)) as typeof body
     } catch {
-      driving = undefined
+      body = {}
     }
-    if (typeof driving !== 'boolean') {
+    if (typeof body.driving !== 'boolean') {
       json(response, 400, { error: 'boolean driving required' })
       return
     }
-    robot.driving = driving
+    robot.driving = body.driving
     robot.updatedAt = new Date().toISOString()
+    robot.changedBy = body.source === 'esp32' ? 'esp32' : 'panel'
+    if (body.source === 'esp32') {
+      robot.lastSeenAt = robot.updatedAt
+      robot.reported = body.driving ? 'driving' : 'paused'
+    }
+    saveRobotState()
     broadcast('robot', robotStatus())
-    console.log(`[robot] driving=${driving}`)
+    console.log(`[robot] driving=${robot.driving} by=${robot.changedBy}`)
     json(response, 200, robotStatus())
     return
   }

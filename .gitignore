@@ -5,3 +5,6 @@ dist
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+
+# 로봇 주행 상태 저장 파일 (개발 서버)
+apps/backend/data/
