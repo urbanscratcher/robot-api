@@ -197,11 +197,7 @@ export default function App() {
         const reading = piezoRef.current
         const { response, eventId } = await sendObservation({
           image: photo,
-          sensors: reading ? {
-            piezo: reading.level,
-            piezoLevel: reading.stage,
-            piezoStrength: reading.strength,
-          } : {},
+          sensors: reading ? { piezoLevel: reading.stage } : {},
         })
         if (response.ok) {
           publicationEventIds.push(eventId)
