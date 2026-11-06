@@ -484,17 +484,6 @@ export default function App() {
       )}
       {glitching && <div key={glitchKey} className="glitch-overlay" aria-hidden="true" />}
       {import.meta.env.DEV && <div className={`camera-status status-${status}`}>camera: {status}</div>}
-      {visit.phase === 'processing' && !articleGenerating && (
-        <div
-          className={`publication-stage${publication && isPublicationProblem(publication.status) ? ' is-problem' : ''}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span className="publication-stage-dot" aria-hidden="true" />
-          <span>{publicationText}</span>
-          {publicationConnection === 'reconnecting' && <small>재연결 중</small>}
-        </div>
-      )}
       <section
         className={`admin-panel${adminOpen ? ' is-open' : ''}`}
         onPointerUp={(event) => event.stopPropagation()}
