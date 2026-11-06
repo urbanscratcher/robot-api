@@ -7,13 +7,14 @@ interface RobotFaceProps {
   recording?: boolean
 }
 
-type MouthShape = 'cat' | 'wobble' | 'o' | 'grin'
+type MouthShape = 'cat' | 'thinking' | 'wobble' | 'o' | 'grin'
 
 function Mouth({ shape }: { shape: MouthShape }) {
   const line = { fill: 'none', stroke: 'currentColor', strokeWidth: 8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
   return (
     <svg className={`mouth mouth-${shape}`} viewBox="0 0 120 60" aria-hidden="true">
       {shape === 'cat' && <path {...line} d="M10 16 Q35 52 60 22 Q85 52 110 16" />}
+      {shape === 'thinking' && <path {...line} d="M12 18 Q36 50 60 23 Q82 45 106 18" />}
       {shape === 'wobble' && <path {...line} d="M14 30 q11.5 -15 23 0 t23 0 t23 0 t23 0" />}
       {shape === 'o' && <ellipse cx="60" cy="30" rx="13" ry="17" fill="currentColor" />}
       {shape === 'grin' && (
@@ -35,8 +36,10 @@ function Mouth({ shape }: { shape: MouthShape }) {
 export function RobotFace({ expression, recording = false }: RobotFaceProps) {
   const mouth: MouthShape = recording
     ? 'grin'
-    : expression === 'hurt' || expression === 'thinking'
+    : expression === 'hurt'
       ? 'wobble'
+      : expression === 'thinking'
+        ? 'thinking'
       : expression === 'surprised'
         ? 'o'
         : 'cat'

@@ -213,32 +213,24 @@ body {
   animation: surprise-pop 2.8s cubic-bezier(.34,1.56,.64,1) infinite;
 }
 
-/* AI가 기사를 쓰는 동안: 눈을 위로 굴리고 입을 한쪽으로 오므린 생각하는 표정 */
+/* AI가 기사를 쓰는 동안: 기존 웃는 표정에 입만 살짝 비대칭인 미소로 바꾼다. */
 .expression-thinking .eyes {
-  gap: clamp(3.3rem, 13dvw, 11rem);
-  transform: translateY(-2dvh) rotate(-2deg);
+  gap: clamp(3.3rem, 14dvw, 12rem);
 }
 .expression-thinking .eye {
-  width: clamp(7.5rem, 21dvw, 21rem);
-  height: clamp(7rem, 34dvh, 18rem);
-  border-radius: 50% 50% 42% 42%;
-  animation: thinking-look 2.6s ease-in-out infinite;
+  height: clamp(5rem, 24dvh, 12rem);
+  border-radius: 50% 50% 10% 10% / 100% 100% 8% 8%;
+  background: transparent;
+  box-shadow: inset 0 clamp(1.4rem, 7dvh, 4rem) 0 var(--eye-color);
+  animation: happy-bob 2.2s ease-in-out infinite;
+  overflow: visible;
 }
-.expression-thinking .eye-right { animation-delay: .08s; }
-.expression-thinking .cheek { opacity: .45; }
 .expression-thinking .mouth {
-  width: clamp(4.5rem, 17vmin, 8rem);
-  transform: translateX(38%);
-  animation: thinking-mouth 2.6s ease-in-out infinite;
-}
-
-@keyframes thinking-look {
-  0%, 100% { transform: translate(10%, -10%) scaleY(.82); }
-  45%, 70% { transform: translate(-8%, -16%) scaleY(.72); }
+  animation: thinking-mouth 2.2s ease-in-out infinite;
 }
 @keyframes thinking-mouth {
-  0%, 100% { transform: translateX(38%) rotate(-5deg) scale(.9, .8); }
-  50% { transform: translateX(28%) rotate(4deg) scale(1, 1.05); }
+  0%, 100% { transform: translateX(2%) rotate(-1deg); }
+  50% { transform: translateX(-1%) rotate(1deg) scale(.98, 1.02); }
 }
 
 .expression-hurt .eyes {
