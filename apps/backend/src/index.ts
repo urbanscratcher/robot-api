@@ -8,17 +8,17 @@ const port = Number(process.env.PORT ?? 3000)
 const HURT_TOKEN = process.env.HURT_TOKEN ?? ''
 // 피에조가 한 번 맞을 때 여러 번 튀는 것을 하나로 묶는 시간(ms)
 const HURT_COOLDOWN_MS = 300
-const PIEZO_MIN_LEVEL = 300
+const PIEZO_SURPRISE_MAX_LEVEL = 300
 const PIEZO_STRONG_LEVEL = 800
 
 type PiezoStage = 1 | 2
 
 function piezoStage(level: number): PiezoStage | null {
-  if (level < PIEZO_MIN_LEVEL) return null
+  if (level <= PIEZO_SURPRISE_MAX_LEVEL) return null
   return level < PIEZO_STRONG_LEVEL ? 1 : 2
 }
 
-// 얼굴 페이지들(SSE 연결). /api/hurt 가 오면 모두에게 'hurt' 이벤트를 보낸다.
+// 얼굴 페이지들(SSE 연결). /api/hurt의 센서 값에 맞는 표정 이벤트를 모두에게 보낸다.
 const listeners = new Set<ServerResponse>()
 let lastHurtAt = 0
 
@@ -160,7 +160,7 @@ const server = createServer(async (request, response) => {
     return
   }
 
-  // ESP32 피에조 충격 → 얼굴이 아파한다.  POST /api/hurt  (본문은 선택: {"level": 812})
+  // ESP32 피에조 값 → 놀라거나 아파한다.  POST /api/hurt  ({"level": 812})
   if (request.method === 'POST' && url.pathname === '/api/hurt') {
     const body = await readBody(request)
     if (HURT_TOKEN) {
@@ -181,18 +181,20 @@ const server = createServer(async (request, response) => {
       json(response, 400, { error: 'numeric level required' })
       return
     }
-    const stage = piezoStage(level)
-    if (!stage) {
-      json(response, 200, { ok: true, skipped: 'below_threshold', level })
-      return
-    }
-    const strength = stage === 1 ? 'weak' : 'strong'
     const now = Date.now()
     if (now - lastHurtAt < HURT_COOLDOWN_MS) {
       json(response, 200, { ok: true, skipped: 'cooldown', listeners: listeners.size })
       return
     }
     lastHurtAt = now
+    const stage = piezoStage(level)
+    if (!stage) {
+      broadcast('surprised', { level, at: new Date(now).toISOString() })
+      console.log(`[surprised] level=${level} listeners=${listeners.size}`)
+      json(response, 200, { ok: true, level, reaction: 'surprised', listeners: listeners.size })
+      return
+    }
+    const strength = stage === 1 ? 'weak' : 'strong'
     broadcast('hurt', { level, stage, strength, at: new Date(now).toISOString() })
     console.log(`[hurt] level=${level} stage=${stage} strength=${strength} listeners=${listeners.size}`)
     json(response, 200, { ok: true, level, stage, strength, listeners: listeners.size })

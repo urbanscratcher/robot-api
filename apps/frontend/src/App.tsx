@@ -19,6 +19,7 @@ import {
 type CaptureState = { kind: 'idle' | 'busy' | 'ok' | 'error'; message: string }
 type VisitState = { phase: 'idle' | 'running' | 'processing'; photos: number; until: number; eventId?: string }
 type PiezoReading = { level: number; stage: 1 | 2; strength: 'weak' | 'strong' }
+type PiezoDisplay = PiezoReading | { level: number; reaction: 'surprised' }
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 type HurtStage = 1 | 2
@@ -62,6 +63,7 @@ export default function App() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const lastAudioIndexRef = useRef<Record<HurtStage, number>>({ 1: -1, 2: -1 })
   const glitchTimerRef = useRef<number | null>(null)
+  const surpriseTimerRef = useRef<number | null>(null)
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null)
   const { videoRef, status, startCamera, stopCamera, captureFrame } = useCamera()
 
@@ -86,6 +88,7 @@ export default function App() {
 
   // 아파하는 반응: 글리치 + 아픈 표정 + 녹음 재생. 화면 탭과 ESP32 피에조 충격이 같이 쓴다.
   const triggerHurt = useCallback((stage: HurtStage = 1) => {
+    if (surpriseTimerRef.current) window.clearTimeout(surpriseTimerRef.current)
     setExpression('hurt')
     setGlitchKey((current) => current + 1)
     setGlitching(true)
@@ -115,6 +118,18 @@ export default function App() {
       // 소리를 못 내도(자동 재생 차단 등) 아픈 표정은 잠깐 보여준다.
       void player.play().catch(() => window.setTimeout(finish, 1500))
     } else window.setTimeout(() => { setExpression('happy'); setHurtBubble('') }, 1500)
+  }, [])
+
+  const triggerSurprised = useCallback(() => {
+    currentAudioRef.current?.pause()
+    if (currentAudioRef.current) currentAudioRef.current.currentTime = 0
+    setHurtBubble('')
+    setExpression('surprised')
+    if (surpriseTimerRef.current) window.clearTimeout(surpriseTimerRef.current)
+    surpriseTimerRef.current = window.setTimeout(() => {
+      setExpression('happy')
+      surpriseTimerRef.current = null
+    }, 1500)
   }, [])
 
   // iPhone은 사용자가 화면을 만진 뒤에만 소리를 낼 수 있다. 첫 터치 때 녹음을 모두 소리 없이
@@ -189,9 +204,9 @@ export default function App() {
         ? { kind: 'ok', text: `✓ 로봇에 반영됨${robot.changedBy === 'esp32' ? ' · 로봇 버튼으로 바뀜' : ''}` }
         : { kind: 'pending', text: '로봇에 전달 중…' }
 
-  // ESP32 피에조 충격: 서버(/api/events)가 'hurt'를 보내면 탭한 것처럼 아파한다.
+  // ESP32 피에조 값: 300 이하는 놀라고, 그보다 크면 탭한 것처럼 아파한다.
   const [hurtLink, setHurtLink] = useState<'connecting' | 'open' | 'closed'>('connecting')
-  const [piezo, setPiezo] = useState<PiezoReading | null>(null)
+  const [piezo, setPiezo] = useState<PiezoDisplay | null>(null)
   const piezoRef = useRef<PiezoReading | null>(null)
   useEffect(() => {
     const events = new EventSource('/api/events')
@@ -211,11 +226,22 @@ export default function App() {
       }
       triggerHurt(stage)
     })
+    events.addEventListener('surprised', (event) => {
+      try {
+        const reading = JSON.parse((event as MessageEvent<string>).data) as { level?: unknown }
+        if (typeof reading.level === 'number') {
+          setPiezo({ level: reading.level, reaction: 'surprised' })
+        }
+      } catch {
+        // 데이터 표시를 못 해도 놀란 표정은 보여준다.
+      }
+      triggerSurprised()
+    })
     events.addEventListener('robot', (event) => {
       try { setRobot(JSON.parse((event as MessageEvent<string>).data) as RobotStatus) } catch { /* 무시 */ }
     })
     return () => events.close()
-  }, [triggerHurt])
+  }, [triggerHurt, triggerSurprised])
 
   const toggleFullscreen = useCallback(async () => {
     try {
@@ -399,6 +425,7 @@ export default function App() {
     return () => {
       publicationAbortRef.current?.abort()
       if (glitchTimerRef.current) window.clearTimeout(glitchTimerRef.current)
+      if (surpriseTimerRef.current) window.clearTimeout(surpriseTimerRef.current)
       audioPlayersRef.current.forEach((audio) => {
         audio.pause()
         audio.src = ''
@@ -463,7 +490,7 @@ export default function App() {
             <div>
               <p className="admin-kicker">
                 ROBOT FACE · 피에조 {hurtLink === 'open' ? '연결됨' : hurtLink === 'connecting' ? '연결 중' : '끊김'}
-                {piezo ? ` · ${piezo.stage}단계 ${piezo.level}` : ''}
+                {piezo ? ` · ${'stage' in piezo ? `${piezo.stage}단계` : '놀람'} ${piezo.level}` : ''}
                 {robot ? ` · 로봇 ${robot.online ? '연결됨' : '안 보임'}` : ''}
               </p>
               <h1>관리자 패널</h1>

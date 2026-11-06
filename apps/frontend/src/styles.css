@@ -185,15 +185,6 @@ body {
   opacity: 0;
 }
 
-.expression-curious .eye {
-  animation: curious-scan 3.8s cubic-bezier(.45,0,.25,1) infinite;
-  border-radius: 50%;
-  height: clamp(9rem, 47dvh, 26rem);
-  transform: scale(1.08);
-}
-.expression-curious .eye-left { animation-delay: -.12s; }
-.expression-curious .eye-right { animation-delay: .12s; }
-
 .expression-happy .eyes { gap: clamp(3.3rem, 14dvw, 12rem); }
 .expression-happy .eye {
   height: clamp(5rem, 24dvh, 12rem);
@@ -602,12 +593,6 @@ body {
   24%, 38% { translate: -2.5dvw .4dvh; }
   45%, 69% { translate: 0 0; }
   76%, 90% { translate: 2.5dvw -.3dvh; }
-}
-
-@keyframes curious-scan {
-  0%, 100% { translate: -2.7dvw .4dvh; scale: 1.03; }
-  45% { translate: 3dvw -1dvh; scale: 1.13; }
-  70% { translate: 0 1dvh; scale: 1.08; }
 }
 
 @keyframes happy-bob {

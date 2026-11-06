@@ -1,4 +1,4 @@
-export type Expression = 'idle' | 'curious' | 'happy' | 'surprised' | 'thinking' | 'hurt'
+export type Expression = 'happy' | 'surprised' | 'thinking' | 'hurt'
 
 interface RobotFaceProps {
   expression: Expression
