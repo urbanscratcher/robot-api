@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RobotFace, type Expression } from './components/RobotFace'
 import { useCamera } from './hooks/useCamera'
+import { AUTO_CAPTURE, OBSERVATION_TOKEN, OBSERVATION_URL, VISIT } from './config'
+import { usePersonDetector } from './hooks/usePersonDetector'
+import { sendObservation, sendTranscript } from './observation'
+import { startListening, type SpeechSession } from './speech'
+
+type CaptureState = { kind: 'idle' | 'busy' | 'ok' | 'error'; message: string }
+type VisitState = { phase: 'idle' | 'running' | 'cooldown'; photos: number; until: number }
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 const VOICE_FILES = [
   '/audio/voice-1.wav',
@@ -42,21 +50,8 @@ export default function App() {
     }
   }, [])
 
-  const handleTouch = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    const inSecretCorner = event.clientX <= window.innerWidth * 0.16 && event.clientY <= window.innerHeight * 0.22
-    if (inSecretCorner) {
-      const now = performance.now()
-      const nextCount = now - secretTapRef.current.lastTap < 700 ? secretTapRef.current.count + 1 : 1
-      secretTapRef.current = { count: nextCount, lastTap: now }
-      if (nextCount >= 3) {
-        secretTapRef.current = { count: 0, lastTap: 0 }
-        setAdminOpen(true)
-        void startCamera()
-      }
-      return
-    }
-
-    secretTapRef.current = { count: 0, lastTap: 0 }
+  // 아파하는 반응: 글리치 + 아픈 표정 + 녹음 재생. 화면 탭과 ESP32 피에조 충격이 같이 쓴다.
+  const triggerHurt = useCallback(() => {
     setExpression('hurt')
     setGlitchKey((current) => current + 1)
     setGlitching(true)
@@ -75,11 +70,55 @@ export default function App() {
       player.onerror = () => setExpression('happy')
       currentAudioRef.current = player
       lastAudioIndexRef.current = nextIndex
-      void player.play().catch(() => setExpression('happy'))
-    } else setExpression('happy')
+      // 소리를 못 내도(자동 재생 차단 등) 아픈 표정은 잠깐 보여준다.
+      void player.play().catch(() => window.setTimeout(() => setExpression('happy'), 1500))
+    } else window.setTimeout(() => setExpression('happy'), 1500)
+  }, [])
+
+  // iPhone은 사용자가 화면을 만진 뒤에만 소리를 낼 수 있다. 첫 터치 때 녹음 5개를 모두 소리 없이
+  // 한 번 재생해 두면, 이후 피에조 충격처럼 터치 없이 온 신호에도 소리가 난다.
+  const audioUnlockedRef = useRef(false)
+  const unlockAudio = useCallback(() => {
+    if (audioUnlockedRef.current) return
+    audioUnlockedRef.current = true
+    audioPlayersRef.current.forEach((player) => {
+      player.muted = true
+      void player.play().then(() => {
+        if (player !== currentAudioRef.current) { player.pause(); player.currentTime = 0 }
+      }).catch(() => undefined).finally(() => { player.muted = false })
+    })
+  }, [])
+
+  const handleTouch = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    unlockAudio()
+    const inSecretCorner = event.clientX <= window.innerWidth * 0.16 && event.clientY <= window.innerHeight * 0.22
+    if (inSecretCorner) {
+      const now = performance.now()
+      const nextCount = now - secretTapRef.current.lastTap < 700 ? secretTapRef.current.count + 1 : 1
+      secretTapRef.current = { count: nextCount, lastTap: now }
+      if (nextCount >= 3) {
+        secretTapRef.current = { count: 0, lastTap: 0 }
+        setAdminOpen(true)
+        void startCamera()
+      }
+      return
+    }
+
+    secretTapRef.current = { count: 0, lastTap: 0 }
+    triggerHurt()
     void startCamera()
     void requestWakeLock()
-  }, [requestWakeLock, startCamera])
+  }, [requestWakeLock, startCamera, triggerHurt, unlockAudio])
+
+  // ESP32 피에조 충격: 서버(/api/events)가 'hurt'를 보내면 탭한 것처럼 아파한다.
+  const [hurtLink, setHurtLink] = useState<'connecting' | 'open' | 'closed'>('connecting')
+  useEffect(() => {
+    const events = new EventSource('/api/events')
+    events.onopen = () => setHurtLink('open')
+    events.onerror = () => setHurtLink(events.readyState === EventSource.CLOSED ? 'closed' : 'connecting')
+    events.addEventListener('hurt', () => triggerHurt())
+    return () => events.close()
+  }, [triggerHurt])
 
   const toggleFullscreen = useCallback(async () => {
     try {
@@ -94,6 +133,88 @@ export default function App() {
     stopCamera()
     await startCamera()
   }, [startCamera, stopCamera])
+
+  const [capture, setCapture] = useState<CaptureState>({ kind: 'idle', message: '' })
+
+  // 취재: 사람을 보면 사진 3장(0·4·8초)을 찍어 /api/observations 로 보내고, 20초 동안 들은 말을
+  // 글자로 바꿔 /api/transcripts 로 보낸다. 끝나면 1분 동안은 사람을 봐도 아무것도 하지 않는다.
+  const [visit, setVisit] = useState<VisitState>({ phase: 'idle', photos: 0, until: 0 })
+  const visitPhaseRef = useRef<VisitState['phase']>('idle')
+  const [, setClockTick] = useState(0)
+  useEffect(() => {
+    if (visit.phase === 'idle') return
+    const timer = window.setInterval(() => setClockTick((tick) => tick + 1), 500)
+    return () => window.clearInterval(timer)
+  }, [visit.phase])
+
+  const runVisit = useCallback(async () => {
+    if (visitPhaseRef.current !== 'idle') return
+    if (!OBSERVATION_URL || !OBSERVATION_TOKEN) {
+      setCapture({ kind: 'error', message: OBSERVATION_URL ? '토큰 미설정' : 'API 경로 미설정' })
+      return
+    }
+    visitPhaseRef.current = 'running'
+    const startedAt = Date.now()
+    setVisit({ phase: 'running', photos: 0, until: startedAt + VISIT.listenMs })
+    setCapture({ kind: 'busy', message: '' })
+    await startCamera()
+
+    let speech: SpeechSession | null = null
+    try { speech = startListening('ko-KR') } catch { speech = null }
+
+    let photosSent = 0
+    const photoJobs = VISIT.photoDelaysMs.map((delay) => sleep(delay).then(async () => {
+      const photo = await captureFrame()
+      if (!photo) return
+      try {
+        const { response } = await sendObservation({ image: photo })
+        if (response.ok) {
+          photosSent += 1
+          setVisit((current) => ({ ...current, photos: photosSent }))
+        }
+      } catch {
+        // 네트워크 오류: 아래 결과 메시지에 장수로만 드러난다.
+      }
+    }))
+
+    await sleep(VISIT.listenMs)
+    const text = speech ? await speech.stop() : ''
+    await Promise.all(photoJobs)
+
+    let transcriptResult: string
+    if (!speech) transcriptResult = '음성 인식 미지원'
+    else if (!text) transcriptResult = speech.lastError() === 'not-allowed' ? '마이크 거부' : '말소리 없음'
+    else {
+      try {
+        const response = await sendTranscript(text)
+        transcriptResult = response.ok ? '대화 전송' : `대화 실패 ${response.status}`
+      } catch {
+        transcriptResult = '대화 실패(네트워크)'
+      }
+    }
+    const allOk = photosSent === VISIT.photoDelaysMs.length && transcriptResult === '대화 전송'
+    setCapture({ kind: allOk ? 'ok' : 'error', message: `사진 ${photosSent}/${VISIT.photoDelaysMs.length} · ${transcriptResult}` })
+    setLastTranscript(text)
+
+    visitPhaseRef.current = 'cooldown'
+    const until = Date.now() + VISIT.cooldownMs
+    setVisit({ phase: 'cooldown', photos: photosSent, until })
+    await sleep(VISIT.cooldownMs)
+    visitPhaseRef.current = 'idle'
+    setVisit({ phase: 'idle', photos: 0, until: 0 })
+  }, [captureFrame, startCamera])
+
+  const [lastTranscript, setLastTranscript] = useState('')
+  const [autoCapture, setAutoCapture] = useState(true)
+  const onPersonPresent = useCallback(() => { void runVisit() }, [runVisit])
+  const detector = usePersonDetector(videoRef, autoCapture && status === 'active', AUTO_CAPTURE, onPersonPresent)
+
+  const secondsLeft = Math.max(0, Math.ceil((visit.until - Date.now()) / 1000))
+  const statusText = visit.phase === 'running'
+    ? `취재 중 · 사진 ${visit.photos}/${VISIT.photoDelaysMs.length} · 듣기 ${secondsLeft}초`
+    : visit.phase === 'cooldown'
+      ? `${capture.message} · 쉬는 중 ${secondsLeft}초`
+      : capture.message
 
   useEffect(() => {
     audioPlayersRef.current = VOICE_FILES.map((source) => {
@@ -146,9 +267,12 @@ export default function App() {
         <section className="admin-panel" onPointerUp={(event) => event.stopPropagation()} aria-label="관리자 패널">
           <header className="admin-header">
             <div>
-              <p className="admin-kicker">ROBOT FACE</p>
+              <p className="admin-kicker">
+                ROBOT FACE · 피에조 {hurtLink === 'open' ? '연결됨' : hurtLink === 'connecting' ? '연결 중' : '끊김'}
+              </p>
               <h1>관리자 패널</h1>
             </div>
+            {statusText && <p className={`capture-status capture-${visit.phase === 'running' ? 'busy' : capture.kind}`} role="status">{statusText}</p>}
             <button className="icon-button" type="button" onClick={() => setAdminOpen(false)} aria-label="관리자 패널 닫기">×</button>
           </header>
 
@@ -157,11 +281,38 @@ export default function App() {
             <div className="camera-meta">
               <span className={`status-dot status-${status}`} />
               <span>전면 카메라</span>
+              <span className={`person-meta${detector.person && detector.person.score >= AUTO_CAPTURE.minScore ? ' is-present' : ''}`}>
+                {detector.state === 'off' ? (autoCapture ? '사람 인식 대기' : '사람 인식 꺼짐')
+                  : detector.state === 'loading' ? '사람 인식 준비 중…'
+                  : detector.state === 'error' ? '사람 인식 실패'
+                  : detector.person && detector.person.score >= AUTO_CAPTURE.minScore
+                    ? `사람 ${Math.round(detector.person.score * 100)}%`
+                    : '사람 없음'}
+              </span>
               <strong>{status === 'active' ? '정상 작동 중' : status}</strong>
             </div>
+            {lastTranscript && <p className="last-transcript">“{lastTranscript}”</p>}
           </div>
 
           <div className="admin-actions">
+            <button
+              type="button"
+              className={autoCapture ? 'is-on' : undefined}
+              onClick={() => setAutoCapture((on) => !on)}
+              aria-pressed={autoCapture}
+            >
+              <span className="action-icon">◉</span>
+              <span>자동 촬영 {autoCapture ? '켜짐' : '꺼짐'}</span>
+            </button>
+            <button
+              type="button"
+              className={visit.phase === 'running' ? 'is-recording' : undefined}
+              onClick={() => { void runVisit() }}
+              disabled={visit.phase !== 'idle'}
+            >
+              <span className="action-icon">●</span>
+              <span>지금 취재</span>
+            </button>
             <button type="button" onClick={toggleFullscreen}>
               <span className="action-icon">{isFullscreen ? '↙' : '↗'}</span>
               <span>{isFullscreen ? '전체화면 종료' : '전체화면 시작'}</span>
