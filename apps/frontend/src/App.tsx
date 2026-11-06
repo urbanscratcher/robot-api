@@ -301,7 +301,6 @@ export default function App() {
         <RobotFace expression={expression} />
       </div>
       {glitching && <div key={glitchKey} className="glitch-overlay" aria-hidden="true" />}
-      <video ref={videoRef} className={`camera-video${adminOpen ? ' camera-preview' : ''}`} playsInline muted autoPlay />
       {import.meta.env.DEV && <div className={`camera-status status-${status}`}>camera: {status}</div>}
       {visit.phase === 'processing' && (
         <div
@@ -314,8 +313,12 @@ export default function App() {
           {publicationConnection === 'reconnecting' && <small>재연결 중</small>}
         </div>
       )}
-      {adminOpen && (
-        <section className="admin-panel" onPointerUp={(event) => event.stopPropagation()} aria-label="관리자 패널">
+      <section
+        className={`admin-panel${adminOpen ? ' is-open' : ''}`}
+        onPointerUp={(event) => event.stopPropagation()}
+        aria-label="관리자 패널"
+        aria-hidden={!adminOpen}
+      >
           <header className="admin-header">
             <div>
               <p className="admin-kicker">
@@ -328,7 +331,9 @@ export default function App() {
           </header>
 
           <div className="admin-camera-card">
-            <div className="camera-frame" aria-hidden="true" />
+            <div className="camera-frame">
+              <video ref={videoRef} className="camera-video" playsInline muted autoPlay />
+            </div>
             <div className="camera-meta">
               <span className={`status-dot status-${status}`} />
               <span>전면 카메라</span>
@@ -345,7 +350,8 @@ export default function App() {
             {lastTranscript && <p className="last-transcript">“{lastTranscript}”</p>}
           </div>
 
-          <div className="admin-actions">
+          <div className="admin-controls">
+            <div className="admin-actions">
             <button
               type="button"
               className={autoCapture ? 'is-on' : undefined}
@@ -372,11 +378,11 @@ export default function App() {
               <span className="action-icon">↻</span>
               <span>카메라 재시작</span>
             </button>
-          </div>
+            </div>
 
-          <p className="admin-note">iPhone Safari에서는 홈 화면에 추가한 앱으로 실행하면 가장 넓은 화면을 사용할 수 있습니다.</p>
+            <p className="admin-note">iPhone Safari에서는 홈 화면에 추가한 앱으로 실행하면 가장 넓은 화면을 사용할 수 있습니다.</p>
+          </div>
         </section>
-      )}
     </main>
   )
 }
