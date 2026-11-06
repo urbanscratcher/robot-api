@@ -30,39 +30,79 @@ export interface SpeechSession {
   lastError(): string | null
 }
 
+const squash = (text: string) => text.replace(/\s+/g, '')
+
+// 받아쓴 조각들을 겹치지 않게 합친다.
+// iPhone Safari는 같은 문장을 여러 번 다시 보내거나, 뒤 조각에 앞 조각을 통째로 담아 보낸다.
+// - 뒤 조각이 앞 조각을 포함하면(이어 말하는 중) 앞 조각을 뒤 조각으로 바꾼다.
+// - 이미 받은 조각에 들어 있는 조각이면 버린다.
+export function mergeSegments(segments: string[]): string[] {
+  const out: string[] = []
+  for (const raw of segments) {
+    const text = raw.trim().replace(/\s+/g, ' ')
+    const key = squash(text)
+    if (!key) continue
+    if (out.some((kept) => squash(kept).includes(key))) continue
+    const last = out[out.length - 1]
+    if (last && key.includes(squash(last))) out[out.length - 1] = text
+    else out.push(text)
+  }
+  return out
+}
+
+// 같은 말(1~12어절)이 연달아 반복되면 한 번만 남긴다. 예) "안녕하세요 안녕하세요 반가워요" → "안녕하세요 반가워요"
+export function collapseRepeats(text: string): string {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  for (let size = Math.min(12, Math.floor(words.length / 2)); size >= 1; size -= 1) {
+    for (let i = 0; i + size * 2 <= words.length; ) {
+      const a = words.slice(i, i + size).join(' ')
+      const b = words.slice(i + size, i + size * 2).join(' ')
+      if (squash(a) === squash(b)) words.splice(i + size, size)
+      else i += 1
+    }
+  }
+  return words.join(' ')
+}
+
+export function cleanTranscript(segments: string[]): string {
+  return collapseRepeats(mergeSegments(segments).join(' '))
+}
+
 // 듣기 시작. 말이 끊겨 브라우저가 스스로 멈추면 stop()을 부를 때까지 다시 시작한다.
 export function startListening(lang = 'ko-KR'): SpeechSession {
   const Recognition = getRecognition()
   if (!Recognition) throw new Error('speech recognition unsupported')
 
-  const finals: string[] = []
-  let interim = ''
+  // 끝난 인식 회차들의 글 + 지금 회차의 글. 지금 회차는 결과가 올 때마다 처음부터 다시 만든다
+  // (resultIndex를 믿고 이어 붙이면 Safari에서 같은 문장이 계속 쌓인다).
+  const committed: string[] = []
+  let current: string[] = []
   let active = true
   let error: string | null = null
   let recognition: RecognitionLike
   let ended: (() => void) | null = null
 
   const begin = () => {
+    current = []
     recognition = new Recognition()
     recognition.lang = lang
     recognition.continuous = true
     recognition.interimResults = true
     recognition.onresult = (event) => {
-      interim = ''
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i]
-        const text = result[0].transcript.trim()
-        if (!text) continue
-        if (result.isFinal) finals.push(text)
-        else interim += `${text} `
+      const segments: string[] = []
+      for (let i = 0; i < event.results.length; i += 1) {
+        const text = event.results[i][0].transcript.trim()
+        if (text) segments.push(text)
       }
+      current = mergeSegments(segments)
     }
     recognition.onerror = (event) => {
       error = event.error
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') active = false
     }
     recognition.onend = () => {
-      if (interim.trim()) { finals.push(interim.trim()); interim = '' }
+      committed.push(...current)
+      current = []
       if (active) {
         try { begin() } catch { active = false }
       }
@@ -75,7 +115,7 @@ export function startListening(lang = 'ko-KR'): SpeechSession {
   return {
     lastError: () => error,
     stop: () => new Promise<string>((resolve) => {
-      const finish = () => resolve([...finals, interim.trim()].filter(Boolean).join(' '))
+      const finish = () => resolve(cleanTranscript([...committed, ...current]))
       if (!active) { finish(); return }
       active = false
       const timeout = window.setTimeout(() => { recognition.abort(); finish() }, 2000)
