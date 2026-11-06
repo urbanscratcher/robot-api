@@ -483,40 +483,70 @@ body {
   to { transform: translateX(.3%); }
 }
 
-/* 둥근 말풍선: 본체와 같은 테두리를 쓴 회전 사각형으로 꼬리를 선명하게 만든다. */
+/* 얼굴 중앙을 피해 화면 가장자리에서 나타나는 만화식 폭발 말풍선 */
 .hurt-bubble {
-  --bubble-border-width: clamp(2px, .45vmin, 4px);
-  top: max(6dvh, calc(env(safe-area-inset-top) + 1rem));
-  bottom: auto;
-  width: auto;
-  max-width: min(82dvw, 32rem);
-  padding: clamp(.65rem, 1.8vmin, .95rem) clamp(1.1rem, 3.2vmin, 1.65rem);
-  border: var(--bubble-border-width) solid #171717;
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 .4rem 1.3rem rgba(35,31,28,.12);
+  --bubble-shift-x: 0%;
+  position: fixed;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  width: clamp(8.5rem, 25vmin, 15rem);
+  aspect-ratio: 1.38;
+  padding: clamp(1.5rem, 4vmin, 2.6rem);
+  border: 0;
+  color: #171717;
+  background: #171717;
+  isolation: isolate;
+  clip-path: polygon(50% 0, 57% 18%, 70% 5%, 72% 24%, 90% 15%, 82% 32%, 100% 35%, 84% 46%, 98% 58%, 79% 61%, 88% 80%, 68% 72%, 65% 100%, 50% 78%, 35% 100%, 32% 72%, 12% 80%, 21% 61%, 2% 58%, 16% 46%, 0 35%, 18% 32%, 10% 15%, 28% 24%, 30% 5%, 43% 18%);
   font-family: ui-rounded, "SF Pro Rounded", -apple-system, sans-serif;
+  font-size: clamp(1.25rem, 4.5vmin, 2.8rem);
+  font-weight: 900;
+  line-height: 1;
   letter-spacing: -.04em;
-  clip-path: none;
-  animation: hurt-bubble-pop .2s cubic-bezier(.23,1,.32,1) both;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(var(--bubble-shift-x));
+  animation: comic-bubble-pop .24s cubic-bezier(.2,1.4,.4,1) both;
 }
 
 .hurt-bubble::before {
   content: "";
   position: absolute;
-  left: 66%;
-  bottom: clamp(-.62rem, -1.6vmin, -.42rem);
-  width: clamp(.9rem, 2.5vmin, 1.35rem);
-  aspect-ratio: 1;
-  border: var(--bubble-border-width) solid #171717;
+  z-index: -1;
+  inset: clamp(2px, .45vmin, 4px);
   background: #fff;
-  /* 회전 뒤 아래쪽 삼각형만 남겨 본체 안쪽의 겹치는 선을 완전히 숨긴다. */
-  clip-path: polygon(0 100%, 100% 0, 100% 100%);
-  transform: translateX(-50%) rotate(45deg);
+  clip-path: inherit;
 }
 
-.hurt-bubble::after {
-  display: none;
+.hurt-bubble::after { display: none; }
+
+.hurt-bubble-top-left {
+  top: max(2dvh, env(safe-area-inset-top));
+  left: max(2dvw, env(safe-area-inset-left));
+}
+.hurt-bubble-top-right {
+  top: max(2dvh, env(safe-area-inset-top));
+  right: max(2dvw, env(safe-area-inset-right));
+}
+.hurt-bubble-bottom-left {
+  bottom: max(2dvh, env(safe-area-inset-bottom));
+  left: max(2dvw, env(safe-area-inset-left));
+}
+.hurt-bubble-bottom-center {
+  --bubble-shift-x: -50%;
+  bottom: max(1dvh, env(safe-area-inset-bottom));
+  left: 50%;
+}
+.hurt-bubble-bottom-right {
+  right: max(2dvw, env(safe-area-inset-right));
+  bottom: max(2dvh, env(safe-area-inset-bottom));
+}
+
+@keyframes comic-bubble-pop {
+  from { opacity: 0; transform: translateX(var(--bubble-shift-x)) scale(.55) rotate(-5deg); }
+  70% { transform: translateX(var(--bubble-shift-x)) scale(1.06) rotate(1deg); }
+  to { opacity: 1; transform: translateX(var(--bubble-shift-x)) scale(1); }
 }
 
 .camera-video {

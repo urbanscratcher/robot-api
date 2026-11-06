@@ -20,6 +20,9 @@ type CaptureState = { kind: 'idle' | 'busy' | 'ok' | 'error'; message: string }
 type VisitState = { phase: 'idle' | 'running' | 'processing'; photos: number; until: number; eventId?: string }
 type PiezoReading = { level: number; stage: 1 | 2; strength: 'weak' | 'strong' }
 type PiezoDisplay = PiezoReading | { level: number; reaction: 'surprised' }
+type BubblePlacement = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
+
+const BUBBLE_PLACEMENTS: BubblePlacement[] = ['top-left', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 type HurtStage = 1 | 2
@@ -56,12 +59,14 @@ export default function App() {
   const [glitchKey, setGlitchKey] = useState(0)
   const [glitching, setGlitching] = useState(false)
   const [hurtBubble, setHurtBubble] = useState('')
+  const [bubblePlacement, setBubblePlacement] = useState<BubblePlacement>('top-right')
   const [adminOpen, setAdminOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement))
   const secretTapRef = useRef({ count: 0, lastTap: 0 })
   const audioPlayersRef = useRef<HTMLAudioElement[]>([])
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const lastAudioIndexRef = useRef<Record<HurtStage, number>>({ 1: -1, 2: -1 })
+  const lastBubblePlacementRef = useRef<BubblePlacement>('top-right')
   const glitchTimerRef = useRef<number | null>(null)
   const surpriseTimerRef = useRef<number | null>(null)
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null)
@@ -105,6 +110,10 @@ export default function App() {
       if (currentAudioRef.current) currentAudioRef.current.currentTime = 0
       const player = audioPlayersRef.current[nextIndex]
       player.currentTime = 0
+      const placements = BUBBLE_PLACEMENTS.filter((placement) => placement !== lastBubblePlacementRef.current)
+      const nextPlacement = placements[Math.floor(Math.random() * placements.length)]
+      lastBubblePlacementRef.current = nextPlacement
+      setBubblePlacement(nextPlacement)
       setHurtBubble(voice.text)
       const finish = () => {
         if (currentAudioRef.current !== player) return
@@ -464,7 +473,12 @@ export default function App() {
         <RobotFace expression={faceExpression} recording={visit.phase === 'running'} />
       </div>
       {hurtBubble && (
-        <div key={`${glitchKey}-${hurtBubble}`} className="hurt-bubble" role="status" aria-live="assertive">
+        <div
+          key={`${glitchKey}-${hurtBubble}`}
+          className={`hurt-bubble hurt-bubble-${bubblePlacement}`}
+          role="status"
+          aria-live="assertive"
+        >
           {hurtBubble}
         </div>
       )}
