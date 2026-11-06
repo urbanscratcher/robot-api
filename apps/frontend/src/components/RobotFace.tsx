@@ -45,10 +45,11 @@ function Features({ expression, recording }: RobotFaceProps) {
 
   if (expression === 'surprised') return (
     <>
-      <ShinyEye x={28} /><ShinyEye x={72} />
+      <path {...line} d="M20 10q8-4 16 0M64 10q8-4 16 0" />
+      <ShinyEye x={28} y={22} /><ShinyEye x={72} y={22} />
       <Cheeks />
-      <ellipse cx="50" cy="43" rx="8" ry="10" fill="currentColor" />
-      <path d="M44 47 Q50 42 56 47 Q50 52 44 47Z" fill="#ff8eaa" />
+      <ellipse cx="50" cy="44" rx="5.4" ry="6.6" fill="currentColor" />
+      <ellipse cx="50" cy="45.5" rx="2.4" ry="2.8" fill="#ff8eaa" />
     </>
   )
 

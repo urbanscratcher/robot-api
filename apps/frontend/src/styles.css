@@ -483,14 +483,15 @@ body {
   to { transform: translateX(.3%); }
 }
 
-/* 둥근 말풍선: 검정 외곽 꼬리 위에 흰 내부 꼬리를 포개 경계가 자연스럽게 이어진다. */
+/* 둥근 말풍선: 본체와 같은 테두리를 쓴 회전 사각형으로 꼬리를 선명하게 만든다. */
 .hurt-bubble {
+  --bubble-border-width: clamp(2px, .45vmin, 4px);
   top: max(6dvh, calc(env(safe-area-inset-top) + 1rem));
   bottom: auto;
   width: auto;
   max-width: min(82dvw, 32rem);
   padding: clamp(.65rem, 1.8vmin, .95rem) clamp(1.1rem, 3.2vmin, 1.65rem);
-  border: clamp(2px, .45vmin, 4px) solid #171717;
+  border: var(--bubble-border-width) solid #171717;
   border-radius: 999px;
   background: #fff;
   box-shadow: 0 .4rem 1.3rem rgba(35,31,28,.12);
@@ -503,26 +504,18 @@ body {
 .hurt-bubble::before {
   content: "";
   position: absolute;
-  left: 64%;
-  bottom: clamp(-1rem, -2.5vmin, -.7rem);
-  width: clamp(1.15rem, 3vmin, 1.8rem);
-  height: clamp(1rem, 2.6vmin, 1.55rem);
-  background: #171717;
-  clip-path: polygon(0 0, 100% 0, 58% 100%);
+  z-index: -1;
+  left: 66%;
+  bottom: clamp(-.62rem, -1.6vmin, -.42rem);
+  width: clamp(.9rem, 2.5vmin, 1.35rem);
+  aspect-ratio: 1;
+  border: var(--bubble-border-width) solid #171717;
+  background: #fff;
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .hurt-bubble::after {
-  content: "";
-  display: block;
-  position: absolute;
-  left: calc(64% + clamp(2px, .45vmin, 4px));
-  bottom: clamp(-.72rem, -1.8vmin, -.48rem);
-  width: clamp(.8rem, 2.2vmin, 1.35rem);
-  height: clamp(.7rem, 1.9vmin, 1.12rem);
-  border: 0;
-  background: #fff;
-  clip-path: polygon(0 0, 100% 0, 54% 100%);
-  transform: none;
+  display: none;
 }
 
 .camera-video {
