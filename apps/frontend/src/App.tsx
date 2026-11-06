@@ -7,6 +7,7 @@ import { sendObservation, sendTranscript } from './observation'
 import { startListening, type SpeechSession } from './speech'
 import {
   isArticleGenerating,
+  isInstagramPublishing,
   isPublicationProblem,
   isPublished,
   publicationStage,
@@ -349,7 +350,15 @@ export default function App() {
       : capture.message
   const articleGenerating = visit.phase === 'processing'
     && Boolean(publication && isArticleGenerating(publication.status))
-  const faceExpression: Expression = articleGenerating && expression !== 'hurt' ? 'thinking' : expression
+  const instagramPublishing = visit.phase === 'processing'
+    && Boolean(publication && isInstagramPublishing(publication.status))
+  const faceExpression: Expression = expression === 'hurt'
+    ? 'hurt'
+    : instagramPublishing
+      ? 'happy'
+      : articleGenerating
+        ? 'thinking'
+        : expression
 
   useEffect(() => {
     audioPlayersRef.current = HURT_VOICES.map(({ source }) => {

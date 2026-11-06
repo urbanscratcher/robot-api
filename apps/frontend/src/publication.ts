@@ -3,6 +3,7 @@ import { OBSERVATION_TOKEN, PUBLICATIONS_URL } from './config'
 export interface PublicationStatus {
   eventId: string
   status: string
+  phase?: string | null
   mediaId?: string | null
   publishedAt?: string | null
   message?: string | null
@@ -24,9 +25,11 @@ type UpdateHandler = (update: PublicationUpdate) => void
 const normalizeStatus = (status: string) => status.trim().toLowerCase().replace(/[\s-]+/g, '_')
 export const isPublished = (status: string) => normalizeStatus(status) === 'published'
 export const isPublicationHandedOff = (status: string) =>
-  ['review_required', 'needs_review', 'ready_for_publish'].includes(normalizeStatus(status))
+  ['review_required', 'needs_review', 'ready_for_publish', 'unknown'].includes(normalizeStatus(status))
 export const isArticleGenerating = (status: string) =>
   ['ai_generating', 'generating', 'article_generating', 'generating_article'].includes(normalizeStatus(status))
+export const isInstagramPublishing = (status: string) =>
+  ['publishing', 'instagram_publishing'].includes(normalizeStatus(status))
 
 const isTerminalForCapture = (status: string) => isPublished(status) || isPublicationHandedOff(status)
 
@@ -56,14 +59,15 @@ export function publicationStage(publication: PublicationStatus) {
     publishing: '인스타 게시 중',
     instagram_publishing: '인스타 게시 중',
     published: '인스타 게시 완료',
+    unknown: '게시 확인 필요',
     failed: '처리 실패',
     error: '처리 실패',
   }
-  return stages[status] ?? publication.message ?? publication.status
+  return stages[status] ?? publication.phase ?? publication.message ?? publication.status
 }
 
 export function isPublicationProblem(status: string) {
-  return ['failed', 'error', 'review_required', 'needs_review', 'ready_for_publish']
+  return ['failed', 'error', 'review_required', 'needs_review', 'ready_for_publish', 'unknown']
     .includes(normalizeStatus(status))
 }
 
