@@ -5,90 +5,61 @@ interface RobotFaceProps {
   recording?: boolean
 }
 
-const line = {
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 3.2,
-  strokeLinecap: 'round',
-  strokeLinejoin: 'round',
-} as const
+type MouthShape = 'cat' | 'thinking' | 'wobble' | 'o' | 'grin'
 
-function ShinyEye({ x, y = 21 }: { x: number; y?: number }) {
+function Mouth({ shape }: { shape: MouthShape }) {
+  const line = { fill: 'none', stroke: 'currentColor', strokeWidth: 6, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
   return (
-    <g>
-      <circle cx={x} cy={y} r="7.2" fill="currentColor" />
-      <circle cx={x - 2.3} cy={y - 2.5} r="2" fill="#fff" />
-      <circle cx={x + 1.4} cy={y + 1.3} r="1" fill="#fff" opacity=".9" />
-    </g>
-  )
-}
-
-function Cheeks() {
-  return (
-    <g className="emoji-cheeks">
-      <ellipse cx="25" cy="37" rx="7" ry="3.2" />
-      <ellipse cx="75" cy="37" rx="7" ry="3.2" />
-    </g>
-  )
-}
-
-function Features({ expression, recording }: RobotFaceProps) {
-  if (recording) return (
-    <>
-      <path {...line} d="M19 13l14-5M67 8l14 5" />
-      <ShinyEye x={28} y={24} /><ShinyEye x={72} y={24} />
-      <Cheeks />
-      <path d="M36 40 Q50 55 64 40 Q50 44 36 40Z" fill="currentColor" />
-      <path d="M42 47 Q50 42 58 47 Q50 52 42 47Z" fill="#ff8eaa" />
-    </>
-  )
-
-  if (expression === 'surprised') return (
-    <>
-      <path {...line} d="M20 10q8-4 16 0M64 10q8-4 16 0" />
-      <ShinyEye x={28} y={22} /><ShinyEye x={72} y={22} />
-      <Cheeks />
-      <ellipse cx="50" cy="44" rx="5.4" ry="6.6" fill="currentColor" />
-      <ellipse cx="50" cy="45.5" rx="2.4" ry="2.8" fill="#ff8eaa" />
-    </>
-  )
-
-  if (expression === 'thinking') return (
-    <>
-      <ShinyEye x={28} />
-      <path {...line} d="M65 23q7-8 14 0" />
-      <Cheeks />
-      <path {...line} d="M41 43q9-7 18 0" />
-      <circle cx="82" cy="11" r="2.2" fill="currentColor" />
-    </>
-  )
-
-  if (expression === 'hurt') return (
-    <>
-      <path {...line} d="M20 17l13 9M33 17l-13 9M67 17l13 9M80 17l-13 9" />
-      <Cheeks />
-      <path {...line} d="M37 47q6-8 13 0q7-8 13 0" />
-    </>
-  )
-
-  return (
-    <>
-      <ShinyEye x={28} /><ShinyEye x={72} />
-      <Cheeks />
-      <path {...line} d="M37 39q13 15 26 0" />
-    </>
+    <svg className={`mouth mouth-${shape}`} viewBox="0 0 120 60" aria-hidden="true">
+      {shape === 'cat' && <path {...line} d="M27 21 Q43 42 60 25 Q77 42 93 21" />}
+      {shape === 'thinking' && <path {...line} d="M31 28 Q47 19 62 29 Q77 38 91 27" />}
+      {shape === 'wobble' && <path {...line} d="M25 31 Q36 18 47 31 T69 31 T91 31" />}
+      {shape === 'o' && <ellipse cx="60" cy="31" rx="11" ry="14" fill="none" stroke="currentColor" strokeWidth="6" />}
+      {shape === 'grin' && (
+        <>
+          <path d="M18 15 Q60 64 102 15 Q60 30 18 15 Z" fill="currentColor" />
+          <path
+            d="M27 20 L34 29 L42 22 L51 33 L60 24 L69 33 L78 22 L86 29 L93 20"
+            fill="none"
+            stroke="#000"
+            strokeWidth="4"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+    </svg>
   )
 }
 
 export function RobotFace({ expression, recording = false }: RobotFaceProps) {
+  const mouth: MouthShape = recording
+    ? 'grin'
+    : expression === 'hurt'
+      ? 'wobble'
+      : expression === 'thinking'
+        ? 'thinking'
+        : expression === 'surprised'
+          ? 'o'
+          : 'cat'
+
   return (
     <div
-      className={`robot-face emoji-robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
+      className={`robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
       aria-label={`Robot expression: ${expression}${recording ? ' (recording)' : ''}`}
     >
-      <svg className="emoji-face-svg" viewBox="0 0 100 62" aria-hidden="true">
-        <Features expression={expression} recording={recording} />
-      </svg>
+      <div className="eyes" aria-hidden="true">
+        <div className="eye-slot eye-slot-left">
+          <span className="brow" />
+          <div className="eye eye-left"><span className="eye-shine" /></div>
+          <span className="cheek" />
+        </div>
+        <div className="eye-slot eye-slot-right">
+          <span className="brow" />
+          <div className="eye eye-right"><span className="eye-shine" /></div>
+          <span className="cheek" />
+        </div>
+      </div>
+      <Mouth shape={mouth} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 :root {
   font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
-  color-scheme: light;
-  background: #f7f4ec;
+  color-scheme: dark;
+  background: #000;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -13,7 +13,7 @@ html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #f7f4ec;
+  background: #000;
   overscroll-behavior: none;
 }
 
@@ -31,13 +31,13 @@ body {
   min-height: 100%;
   overflow: hidden;
   cursor: pointer;
-  background: #f7f4ec;
+  background: #000;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .robot-face {
-  --eye-color: #191817;
-  --eye-glow: transparent;
+  --eye-color: #fff;
+  --eye-glow: rgba(255,255,255,.18);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -910,3 +910,57 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* 초기 검정 화면 로봇 얼굴 */
+.robot-face::after {
+  background: radial-gradient(ellipse, rgba(255,255,255,.035), transparent 70%);
+}
+
+.eye {
+  width: clamp(7.5rem, 22dvw, 22rem);
+  height: clamp(8.5rem, 43dvh, 24rem);
+  max-height: 58dvw;
+  border-radius: 48% 48% 46% 46% / 43% 43% 53% 53%;
+  background: var(--eye-color);
+  box-shadow: 0 0 1.3rem var(--eye-glow), inset 0 -1rem 2rem rgba(185,215,255,.09);
+  animation: idle-look 9s cubic-bezier(.45,0,.2,1) infinite, blink 6.4s ease-in-out infinite;
+}
+
+.eye-shine { opacity: 0; }
+
+.expression-happy .eyes,
+.expression-thinking .eyes { gap: clamp(3.3rem, 14dvw, 12rem); }
+.expression-happy .eye,
+.expression-thinking .eye {
+  width: clamp(7.5rem, 22dvw, 22rem);
+  height: clamp(5rem, 24dvh, 12rem);
+  border-radius: 50% 50% 10% 10% / 100% 100% 8% 8%;
+  background: transparent;
+  box-shadow: inset 0 clamp(1.4rem, 7dvh, 4rem) 0 var(--eye-color);
+  animation: happy-bob 2.2s ease-in-out infinite;
+  overflow: visible;
+}
+
+.expression-surprised .eyes { gap: clamp(3rem, 11dvw, 9rem); }
+.expression-surprised .eye {
+  width: clamp(9rem, 25dvw, 25rem);
+  height: clamp(9rem, 52dvh, 28rem);
+  max-height: 62dvw;
+  border-radius: 50%;
+  animation: surprise-pop 2.8s cubic-bezier(.34,1.56,.64,1) infinite;
+}
+.expression-surprised .brow { opacity: 0; }
+
+.cheek {
+  bottom: -16%;
+  width: 56%;
+  aspect-ratio: 1.6;
+  background: radial-gradient(closest-side, rgba(255,120,165,.85), rgba(255,120,165,0));
+}
+
+.mouth {
+  width: clamp(5rem, 22vmin, 10rem);
+  margin-top: clamp(1rem, 6vmin, 3.5rem);
+  filter: drop-shadow(0 0 .7rem var(--eye-glow));
+}
+.mouth-cat { animation: happy-bob 2.2s ease-in-out infinite; }
