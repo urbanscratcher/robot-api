@@ -20,6 +20,7 @@ type PiezoReading = { level: number; stage: 1 | 2; strength: 'weak' | 'strong' }
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
 type HurtStage = 1 | 2
+type RobotStatus = { driving: boolean; online: boolean; updatedAt: string; lastSeenAt: string | null }
 type HurtVoice = { source: string; text: string; stage: HurtStage }
 
 const HURT_VOICES: HurtVoice[] = [
@@ -139,6 +140,33 @@ export default function App() {
     void requestWakeLock()
   }, [requestWakeLock, startCamera, triggerHurt, unlockAudio])
 
+  // 로봇(ESP32) 주행 켜기/끄기. 서버가 상태를 들고 있고 ESP32가 1초마다 확인한다.
+  const [robot, setRobot] = useState<RobotStatus | null>(null)
+  const [robotBusy, setRobotBusy] = useState(false)
+  useEffect(() => {
+    let stopped = false
+    const load = () => fetch('/api/robot').then((r) => r.ok ? r.json() as Promise<RobotStatus> : null)
+      .then((status) => { if (!stopped && status) setRobot(status) }).catch(() => undefined)
+    void load()
+    const timer = window.setInterval(load, 3000)  // ESP32 연결 표시(마지막 확인 시각) 갱신
+    return () => { stopped = true; window.clearInterval(timer) }
+  }, [])
+  const toggleRobot = useCallback(async () => {
+    setRobotBusy(true)
+    try {
+      const response = await fetch('/api/robot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driving: !(robot?.driving ?? true) }),
+      })
+      if (response.ok) setRobot(await response.json() as RobotStatus)
+    } catch {
+      // 네트워크 오류: 버튼 상태가 그대로 남는다.
+    } finally {
+      setRobotBusy(false)
+    }
+  }, [robot?.driving])
+
   // ESP32 피에조 충격: 서버(/api/events)가 'hurt'를 보내면 탭한 것처럼 아파한다.
   const [hurtLink, setHurtLink] = useState<'connecting' | 'open' | 'closed'>('connecting')
   const [piezo, setPiezo] = useState<PiezoReading | null>(null)
@@ -160,6 +188,9 @@ export default function App() {
         // 예전 서버 형식이어도 아픈 반응 자체는 유지한다.
       }
       triggerHurt(stage)
+    })
+    events.addEventListener('robot', (event) => {
+      try { setRobot(JSON.parse((event as MessageEvent<string>).data) as RobotStatus) } catch { /* 무시 */ }
     })
     return () => events.close()
   }, [triggerHurt])
@@ -375,6 +406,7 @@ export default function App() {
               <p className="admin-kicker">
                 ROBOT FACE · 피에조 {hurtLink === 'open' ? '연결됨' : hurtLink === 'connecting' ? '연결 중' : '끊김'}
                 {piezo ? ` · ${piezo.stage}단계 ${piezo.level}` : ''}
+                {robot ? ` · 로봇 ${robot.online ? '연결됨' : '안 보임'}` : ''}
               </p>
               <h1>관리자 패널</h1>
             </div>
@@ -404,6 +436,17 @@ export default function App() {
 
           <div className="admin-controls">
             <div className="admin-actions">
+            <button
+              type="button"
+              className={robot?.driving ? 'is-on' : undefined}
+              onClick={() => { void toggleRobot() }}
+              disabled={!robot || robotBusy}
+              aria-pressed={robot?.driving ?? false}
+              title={robot && !robot.online ? 'ESP32가 서버에 접속하지 않고 있어요' : undefined}
+            >
+              <span className="action-icon">{robot?.driving ? '■' : '▶'}</span>
+              <span>주행 {robot ? (robot.driving ? '켜짐' : '꺼짐') : '…'}</span>
+            </button>
             <button
               type="button"
               className={autoCapture ? 'is-on' : undefined}
