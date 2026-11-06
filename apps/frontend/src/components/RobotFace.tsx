@@ -12,7 +12,7 @@ function Mouth({ shape }: { shape: MouthShape }) {
   return (
     <svg className={`mouth mouth-${shape}`} viewBox="0 0 120 60" aria-hidden="true">
       {shape === 'cat' && <path {...line} d="M27 21 Q43 42 60 25 Q77 42 93 21" />}
-      {shape === 'thinking' && <path {...line} d="M39 20 L60 43 L81 20 Z" />}
+      {shape === 'thinking' && <path {...line} d="M36 43 L60 16 L84 43 Z" />}
       {shape === 'wobble' && <path {...line} d="M25 31 Q36 18 47 31 T69 31 T91 31" />}
       {shape === 'o' && <ellipse cx="60" cy="31" rx="11" ry="14" fill="none" stroke="currentColor" strokeWidth="6" />}
       {shape === 'grin' && (
@@ -47,6 +47,12 @@ export function RobotFace({ expression, recording = false }: RobotFaceProps) {
       className={`robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
       aria-label={`Robot expression: ${expression}${recording ? ' (recording)' : ''}`}
     >
+      {expression === 'thinking' && (
+        <div className="focus-wrinkles" aria-hidden="true">
+          <span />
+          <span />
+        </div>
+      )}
       <div className="eyes" aria-hidden="true">
         <div className="eye-slot eye-slot-left">
           <span className="brow" />

@@ -958,6 +958,24 @@ body {
 .expression-thinking .eye-right { transform: rotate(-9deg); }
 .expression-thinking .eye-slot-left .brow { transform: translateY(18%) rotate(11deg); }
 .expression-thinking .eye-slot-right .brow { transform: translateY(18%) rotate(-11deg); }
+.focus-wrinkles {
+  position: absolute;
+  z-index: 2;
+  top: 32%;
+  left: 50%;
+  display: flex;
+  gap: clamp(.35rem, 1.3vmin, .8rem);
+  transform: translateX(-50%);
+}
+.focus-wrinkles span {
+  width: clamp(.25rem, .7vmin, .45rem);
+  height: clamp(1.4rem, 5dvh, 2.8rem);
+  border-radius: 999px;
+  background: var(--eye-color);
+  box-shadow: 0 0 .8rem var(--eye-glow);
+}
+.focus-wrinkles span:first-child { transform: rotate(-18deg); }
+.focus-wrinkles span:last-child { transform: rotate(18deg); }
 .expression-thinking .mouth {
   width: clamp(4rem, 16vmin, 7rem);
   animation: focus-mouth 2.8s ease-in-out infinite;
