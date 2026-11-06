@@ -5,57 +5,88 @@ interface RobotFaceProps {
   recording?: boolean
 }
 
-function PixelFeatures({ expression, recording }: RobotFaceProps) {
-  if (recording) return (
-    <g className="pixel-features pixel-features-recording">
-      <path d="M9 7h5v2H9zM18 7h5v2h-5zM10 10h3v3h-3zM19 10h3v3h-3z" />
-      <path d="M10 16h2v-1h2v1h4v-1h2v1h2v3H10z" />
-      <path className="pixel-cutout" d="M13 17h2v1h-2zM17 17h2v1h-2z" />
+const line = {
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 3.2,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+} as const
+
+function ShinyEye({ x, y = 21 }: { x: number; y?: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r="7.2" fill="currentColor" />
+      <circle cx={x - 2.3} cy={y - 2.5} r="2" fill="#fff" />
+      <circle cx={x + 1.4} cy={y + 1.3} r="1" fill="#fff" opacity=".9" />
     </g>
+  )
+}
+
+function Cheeks() {
+  return (
+    <g className="emoji-cheeks">
+      <ellipse cx="25" cy="37" rx="7" ry="3.2" />
+      <ellipse cx="75" cy="37" rx="7" ry="3.2" />
+    </g>
+  )
+}
+
+function Features({ expression, recording }: RobotFaceProps) {
+  if (recording) return (
+    <>
+      <path {...line} d="M19 13l14-5M67 8l14 5" />
+      <ShinyEye x={28} y={24} /><ShinyEye x={72} y={24} />
+      <Cheeks />
+      <path d="M36 40 Q50 55 64 40 Q50 44 36 40Z" fill="currentColor" />
+      <path d="M42 47 Q50 42 58 47 Q50 52 42 47Z" fill="#ff8eaa" />
+    </>
   )
 
   if (expression === 'surprised') return (
-    <g className="pixel-features">
-      <path d="M9 7h2V6h2v1h2v5H9zM17 7h2V6h2v1h2v5h-6z" />
-      <path d="M12 15h8v6h-8z" />
-      <path className="pixel-cutout" d="M14 17h4v2h-4z" />
-    </g>
+    <>
+      <ShinyEye x={28} /><ShinyEye x={72} />
+      <Cheeks />
+      <ellipse cx="50" cy="43" rx="8" ry="10" fill="currentColor" />
+      <path d="M44 47 Q50 42 56 47 Q50 52 44 47Z" fill="#ff8eaa" />
+    </>
   )
 
   if (expression === 'thinking') return (
-    <g className="pixel-features">
-      <path d="M8 8h6v2H8zM19 7h3v6h-3zM24 5h2v2h-2zM26 3h2v2h-2z" />
-      <path d="M11 17h3v-1h7v2h-7v1h-3z" />
-    </g>
+    <>
+      <ShinyEye x={28} />
+      <path {...line} d="M65 23q7-8 14 0" />
+      <Cheeks />
+      <path {...line} d="M41 43q9-7 18 0" />
+      <circle cx="82" cy="11" r="2.2" fill="currentColor" />
+    </>
   )
 
   if (expression === 'hurt') return (
-    <g className="pixel-features">
-      <path d="M8 6h2v2h2V6h2v2h-2v2h2v2h-2v-2h-2v2H8v-2h2V8H8zM18 6h2v2h2V6h2v2h-2v2h2v2h-2v-2h-2v2h-2v-2h2V8h-2z" />
-      <path d="M10 16h2v-1h2v1h4v-1h2v1h2v3h-2v1h-2v-1h-4v1h-2v-1h-2z" />
-    </g>
+    <>
+      <path {...line} d="M20 17l13 9M33 17l-13 9M67 17l13 9M80 17l-13 9" />
+      <Cheeks />
+      <path {...line} d="M37 47q6-8 13 0q7-8 13 0" />
+    </>
   )
 
   return (
-    <g className="pixel-features">
-      <path d="M10 7h3v6h-3zM19 7h3v6h-3z" />
-      <path d="M11 17h2v1h6v-1h2v2h-2v1h-6v-1h-2z" />
-    </g>
+    <>
+      <ShinyEye x={28} /><ShinyEye x={72} />
+      <Cheeks />
+      <path {...line} d="M37 39q13 15 26 0" />
+    </>
   )
 }
 
 export function RobotFace({ expression, recording = false }: RobotFaceProps) {
   return (
     <div
-      className={`robot-face pixel-robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
+      className={`robot-face emoji-robot-face expression-${expression}${recording ? ' is-recording' : ''}`}
       aria-label={`Robot expression: ${expression}${recording ? ' (recording)' : ''}`}
     >
-      <svg className="pixel-face-svg" viewBox="0 0 32 24" role="img" aria-hidden="true" shapeRendering="crispEdges">
-        <path
-          className="pixel-head"
-          d="M8 1h16v1h3v2h2v3h2v10h-2v3h-2v2h-3v1H8v-1H5v-2H3v-3H1V7h2V4h2V2h3z"
-        />
-        <PixelFeatures expression={expression} recording={recording} />
+      <svg className="emoji-face-svg" viewBox="0 0 100 62" aria-hidden="true">
+        <Features expression={expression} recording={recording} />
       </svg>
     </div>
   )
