@@ -285,6 +285,12 @@ export default function App() {
       if (!photo) return
       try {
         const reading = piezoRef.current
+        // 피에조 단계는 다음 관찰 POST 한 번에만 포함한다. 여러 사진이 동시에
+        // 전송되더라도 첫 번째 작업이 값을 가져가면 나머지는 기본 단계로 전송된다.
+        if (reading) {
+          piezoRef.current = null
+          setPiezo(null)
+        }
         const { response, eventId } = await sendObservation({
           image: photo,
           sensors: reading ? { piezoLevel: reading.stage } : {},
