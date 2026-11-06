@@ -1,0 +1,14 @@
+services:
+  robot-face:
+    build: .
+    container_name: robot-face
+    ports:
+      - "8080:80"
+    networks:
+      - default
+      - proxy
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
