@@ -1,17 +1,18 @@
-export type Expression = 'happy' | 'wink' | 'surprised' | 'thinking' | 'hurt'
+export type Expression = 'happy' | 'proud' | 'surprised' | 'thinking' | 'hurt'
 
 interface RobotFaceProps {
   expression: Expression
   recording?: boolean
 }
 
-type MouthShape = 'cat' | 'thinking' | 'wobble' | 'o' | 'grin'
+type MouthShape = 'cat' | 'proud' | 'thinking' | 'wobble' | 'o' | 'grin'
 
 function Mouth({ shape }: { shape: MouthShape }) {
   const line = { fill: 'none', stroke: 'currentColor', strokeWidth: 6, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
   return (
     <svg className={`mouth mouth-${shape}`} viewBox="0 0 120 60" aria-hidden="true">
       {shape === 'cat' && <path {...line} d="M27 21 Q43 42 60 25 Q77 42 93 21" />}
+      {shape === 'proud' && <path {...line} d="M24 30 Q55 48 94 18 Q72 48 24 30" />}
       {shape === 'thinking' && <path {...line} d="M36 43 L60 16 L84 43 Z" />}
       {shape === 'wobble' && <path {...line} d="M25 31 Q36 18 47 31 T69 31 T91 31" />}
       {shape === 'o' && <ellipse cx="60" cy="31" rx="11" ry="14" fill="none" stroke="currentColor" strokeWidth="6" />}
@@ -38,6 +39,8 @@ export function RobotFace({ expression, recording = false }: RobotFaceProps) {
       ? 'wobble'
       : expression === 'thinking'
         ? 'thinking'
+        : expression === 'proud'
+          ? 'proud'
         : expression === 'surprised'
           ? 'o'
           : 'cat'

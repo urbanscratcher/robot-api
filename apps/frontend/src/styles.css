@@ -924,10 +924,10 @@ body {
 .eye-shine { opacity: 0; }
 
 .expression-happy .eyes,
-.expression-wink .eyes,
+.expression-proud .eyes,
 .expression-thinking .eyes { gap: clamp(3.3rem, 14dvw, 12rem); }
 .expression-happy .eye,
-.expression-wink .eye,
+.expression-proud .eye,
 .expression-thinking .eye {
   width: clamp(7.5rem, 22dvw, 22rem);
   height: clamp(5rem, 24dvh, 12rem);
@@ -938,13 +938,25 @@ body {
   overflow: visible;
 }
 
-/* 인스타그램 게시 중: 웃는 얼굴을 유지하면서 오른쪽 눈만 감는다. */
-.expression-wink .eye-right {
-  height: clamp(.7rem, 3dvh, 1.5rem);
+/* 인스타그램 게시 중: 가늘게 뜬 눈, 치켜올린 눈썹, 비대칭 미소의 의기양양한 표정. */
+.expression-proud .eye {
+  height: clamp(1.1rem, 5dvh, 2.6rem);
   border-radius: 999px;
   background: var(--eye-color);
   box-shadow: 0 0 1.3rem var(--eye-glow);
-  transform: rotate(-8deg);
+  animation: proud-bob 2.4s ease-in-out infinite;
+}
+.expression-proud .eye-left { transform: rotate(7deg); }
+.expression-proud .eye-right { transform: rotate(-7deg); }
+.expression-proud .brow { opacity: 1; }
+.expression-proud .eye-slot-left .brow { transform: translateY(-35%) rotate(-15deg); }
+.expression-proud .eye-slot-right .brow { transform: translateY(15%) rotate(-5deg); }
+.expression-proud .cheek { opacity: .45; }
+.expression-proud .mouth { width: clamp(5.5rem, 20vmin, 10rem); }
+
+@keyframes proud-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -.18rem; }
 }
 
 .expression-thinking .eye {

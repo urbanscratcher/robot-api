@@ -421,7 +421,7 @@ export default function App() {
   const faceExpression: Expression = expression === 'hurt'
     ? 'hurt'
     : instagramPublishing
-      ? 'wink'
+      ? 'proud'
       : articleGenerating
         ? 'thinking'
         : expression
