@@ -80,19 +80,55 @@ function saveRobotState() {
   }
 }
 
+// 촬영 중 잠깐 멈춤 (hold). 주행 스위치(driving)와 따로 둔다.
+// - 얼굴 페이지가 사진을 찍으면 hold 를 걸고, 인스타 게시가 끝나면(또는 게시 관리자에게 넘어가면) 푼다.
+// - 신호가 끝내 안 와도 로봇이 계속 서 있지 않도록 ROBOT_HOLD_MAX_MS 가 지나면 저절로 풀린다.
+// - 파일에 저장하지 않는다: 서버가 다시 시작되면 풀린 상태로 시작한다.
+const ROBOT_HOLD_MAX_MS = Number(process.env.ROBOT_HOLD_MAX_MS ?? 10 * 60 * 1000)
+const hold = {
+  active: false,
+  reason: null as string | null,
+  since: null as string | null,
+  until: null as string | null,
+}
+
+function clearHold() {
+  hold.active = false
+  hold.reason = null
+  hold.since = null
+  hold.until = null
+}
+
 function robotStatus() {
+  if (hold.active && hold.until && Date.now() >= Date.parse(hold.until)) clearHold()
   const seenMsAgo = robot.lastSeenAt ? Date.now() - Date.parse(robot.lastSeenAt) : null
   const online = seenMsAgo !== null && seenMsAgo < 5000
-  const synced = online && robot.reported === (robot.driving ? 'driving' : 'paused')
-  return { ...robot, online, synced, seenMsAgo }
+  // 로봇이 실제로 해야 하는 것: 스위치가 켜져 있고 촬영 중 멈춤이 아니면 달린다.
+  const shouldDrive = robot.driving && !hold.active
+  const synced = online && robot.reported === (shouldDrive ? 'driving' : 'paused')
+  return {
+    ...robot,
+    online,
+    synced,
+    seenMsAgo,
+    hold: hold.active,
+    holdReason: hold.reason,
+    holdSince: hold.since,
+    holdUntil: hold.until,
+    shouldDrive,
+  }
 }
 
 // 로봇 연결이 끊기거나 다시 붙으면 패널에 바로 알린다.
+// 촬영 중 멈춤이 시간이 다 돼서 풀려도 알린다.
 let lastOnline = false
+let lastHold = false
 setInterval(() => {
   const status = robotStatus()
-  if (status.online !== lastOnline) {
+  if (status.online !== lastOnline || status.hold !== lastHold) {
+    if (lastHold && !status.hold) console.log('[robot] hold 해제 (시간 초과 또는 해제됨)')
     lastOnline = status.online
+    lastHold = status.hold
     broadcast('robot', status)
   }
 }, 1000).unref()
@@ -157,6 +193,38 @@ const server = createServer(async (request, response) => {
     saveRobotState()
     broadcast('robot', robotStatus())
     console.log(`[robot] driving=${robot.driving} by=${robot.changedBy}`)
+    json(response, 200, robotStatus())
+    return
+  }
+
+  // 촬영 중 잠깐 멈춤.  POST /api/robot/hold  {"hold": true, "reason": "capture", "maxMs": 600000}
+  //                                           {"hold": false}
+  // 얼굴 페이지(촬영 → 인스타 게시 완료)나 다른 서비스가 부른다. 주행 스위치(driving)는 건드리지 않는다.
+  if (request.method === 'POST' && url.pathname === '/api/robot/hold') {
+    let body: { hold?: unknown; reason?: unknown; maxMs?: unknown } = {}
+    try {
+      body = JSON.parse(await readBody(request)) as typeof body
+    } catch {
+      body = {}
+    }
+    if (typeof body.hold !== 'boolean') {
+      json(response, 400, { error: 'boolean hold required' })
+      return
+    }
+    if (body.hold) {
+      const requested = typeof body.maxMs === 'number' && Number.isFinite(body.maxMs) ? body.maxMs : ROBOT_HOLD_MAX_MS
+      const maxMs = Math.max(1000, Math.min(requested, ROBOT_HOLD_MAX_MS))
+      const now = Date.now()
+      hold.active = true
+      hold.reason = typeof body.reason === 'string' ? body.reason.slice(0, 40) : 'capture'
+      hold.since = hold.since ?? new Date(now).toISOString()
+      hold.until = new Date(now + maxMs).toISOString()
+    } else {
+      clearHold()
+    }
+    lastHold = hold.active
+    broadcast('robot', robotStatus())
+    console.log(`[robot] hold=${hold.active}${hold.active ? ` reason=${hold.reason} until=${hold.until}` : ''}`)
     json(response, 200, robotStatus())
     return
   }
