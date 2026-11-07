@@ -15,7 +15,7 @@ let adIndex = Math.floor(Math.random() * ads.length);
 const href = story => '#article/' + encodeURIComponent(story.id);
 const date = story => escape(new Date(story.publishedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }));
 const summary = story => escape(story.caption.replaceAll('\n', ' ').slice(0, 140));
-const newestFirst = (a, b) => String(b.publishedAt ?? '').localeCompare(String(a.publishedAt ?? '')) || String(a.id).localeCompare(String(b.id));
+const newestFirst = (a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0) || String(a.id).localeCompare(String(b.id));
 function art(story, index = 0) {
   const src = story.images[index];
   if (!src || !(src.startsWith('/api/news/') || /^https:\/\//.test(src))) return '';

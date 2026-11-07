@@ -13,7 +13,7 @@ test('edition renderer handles empty, one and many articles, escapes text and pr
     const location = { pathname: `/${slug}`, hash: '' };
     const listeners: Record<string, () => void> = {};
     const events: Record<string, () => void> = {};
-    const photo = { id: 'old', title: '<img onerror=alert(1)>', caption: '본문\n<script>alert(1)</script>', images: ['/api/news/old/images/0'], publishedAt: '2026-11-06T11:00:00Z' };
+    const photo = { id: 'old', title: '<img onerror=alert(1)>', caption: '본문\n<script>alert(1)</script>', images: ['/api/news/old/images/0'], publishedAt: '2026-11-06T11:29:00+09:00' };
     let items: typeof photo[] = [];
     const context = {
       document: { querySelector: (s: string) => s === '#edition' ? { textContent: JSON.stringify(edition) } : s === '#app' ? app : {}, body: { className: '' }, head: { append() {} }, createElement: () => ({}) },
@@ -38,7 +38,7 @@ test('edition renderer handles empty, one and many articles, escapes text and pr
     assert.ok(!app.innerHTML.includes('undefined'));
     location.hash = '#article/old'; listeners.hashchange();
     assert.match(app.innerHTML, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
-    items = [photo, { ...photo, id: 'new', title: '가장 최신 헤드라인', publishedAt: '2026-11-06T12:00:00Z' }];
+    items = [photo, { ...photo, id: 'new', title: '가장 최신 헤드라인', publishedAt: '2026-11-06T03:37:00Z' }];
     listeners.online(); await new Promise(r => setImmediate(r));
     assert.match(app.innerHTML, /src="\/api\/news\/old\/images\/0"/);
     location.hash = ''; listeners.hashchange();

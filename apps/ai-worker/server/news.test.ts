@@ -81,6 +81,9 @@ test('public news exposes published and uncertain text and images, with stable a
     assert.equal(updated.items[0].title, '카드 0');
     assert.equal((await get('/api/news/two/images/3')).status, 200);
     assert.equal((await get('/api/news/two/images/4')).status, 404);
+    await writeFile(join(dir, 'three.json'), JSON.stringify({ ...item, status: 'published', publishedAt: '2026-11-06T11:30:00+09:00' }));
+    const timezoneSorted = await (await get()).json();
+    assert.deepEqual(timezoneSorted.items.map((i: {id: string}) => i.id), ['two', 'one', 'three']);
   } finally {
     await new Promise<void>(r => server.close(() => r()));
     await rm(dir, { recursive: true, force: true });

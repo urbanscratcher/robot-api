@@ -58,7 +58,7 @@ export async function newsRoutes(req: IncomingMessage, res: ServerResponse, path
       return { id, title: item.cards?.[0]?.title || item.caption.split('\n').find(s => s.trim()) || '현장 기사',
         caption: item.caption, images, publishedAt: item.newsPublishedAt || item.publishedAt || item.input.capturedAt };
     }))).filter(item => item !== null);
-    items.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || a.id.localeCompare(b.id));
+    items.sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0) || a.id.localeCompare(b.id));
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
     res.writeHead(200); res.end(JSON.stringify({ items }));
