@@ -32,6 +32,17 @@ type HurtStage = 1 | 2
 type RobotStatus = {
   driving: boolean; online: boolean; synced?: boolean; updatedAt: string; lastSeenAt: string | null
   reported?: 'driving' | 'paused' | null; changedBy?: string; seenMsAgo?: number | null
+  hold?: boolean; holdReason?: string | null; holdUntil?: string | null; shouldDrive?: boolean
+}
+
+// 촬영하면 로봇을 잠깐 세우고(인스타 게시가 끝날 때까지), 끝나면 푼다. 주행 스위치와는 따로다.
+// 서버는 일정 시간(기본 10분)이 지나면 저절로 풀어 준다.
+function setRobotHold(hold: boolean, reason = 'capture') {
+  return fetch('/api/robot/hold', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hold, reason }),
+  }).catch(() => undefined)
 }
 
 function agoText(ms: number) {
@@ -213,8 +224,10 @@ export default function App() {
     : !robot.online
       ? { kind: 'off', text: `로봇 연결 안 됨${robot.seenMsAgo != null ? ` · 마지막 확인 ${agoText(robot.seenMsAgo)}` : ''} · 켜지면 이 설정을 따라요` }
       : robot.synced
-        ? { kind: 'ok', text: `✓ 로봇에 반영됨${robot.changedBy === 'esp32' ? ' · 로봇 버튼으로 바뀜' : ''}` }
-        : { kind: 'pending', text: '로봇에 전달 중…' }
+        ? { kind: 'ok', text: robot.hold
+          ? '✓ 촬영 중이라 잠깐 멈춤 · 게시가 끝나면 다시 출발'
+          : `✓ 로봇에 반영됨${robot.changedBy === 'esp32' ? ' · 로봇 버튼으로 바뀜' : ''}` }
+        : { kind: 'pending', text: robot.hold ? '촬영 중 멈춤 전달 중…' : '로봇에 전달 중…' }
 
   // ESP32 피에조 값: 300 이하는 놀라고, 그보다 크면 탭한 것처럼 아파한다.
   const [hurtLink, setHurtLink] = useState<'connecting' | 'open' | 'closed'>('connecting')
@@ -307,6 +320,7 @@ export default function App() {
       return
     }
     visitPhaseRef.current = 'running'
+    void setRobotHold(true)   // 촬영하는 동안부터 게시가 끝날 때까지 로봇을 세운다
     setPublication(null)
     const startedAt = Date.now()
     setVisit({ phase: 'running', photos: 0, until: startedAt + VISIT.maxListenMs })
@@ -384,6 +398,7 @@ export default function App() {
     setLastTranscript(text)
 
     if (!publicationEventIds.length) {
+      void setRobotHold(false)   // 보낸 사진이 없으면 기다릴 게시도 없다
       visitPhaseRef.current = 'idle'
       setVisit({ phase: 'idle', photos: 0, until: 0 })
       return
@@ -409,6 +424,8 @@ export default function App() {
       return
     } finally {
       if (publicationAbortRef.current === controller) publicationAbortRef.current = null
+      // 게시 완료·게시 관리자 전달·실패 어느 쪽이든 로봇은 다시 출발한다
+      void setRobotHold(false)
     }
     visitPhaseRef.current = 'idle'
     setVisit({ phase: 'idle', photos: 0, until: 0 })
@@ -548,7 +565,7 @@ export default function App() {
             <div className={`robot-card ${robot?.driving ?? true ? 'is-driving' : 'is-stopped'}`}>
               <div className="robot-card-text">
                 <span className="robot-card-label">로봇 주행</span>
-                <strong>{!robot ? '불러오는 중…' : robot.driving ? '켜짐 · 돌아다니는 중' : '꺼짐 · 멈춰 있음'}</strong>
+                <strong>{!robot ? '불러오는 중…' : !robot.driving ? '꺼짐 · 멈춰 있음' : robot.hold ? '켜짐 · 촬영 중 잠깐 멈춤' : '켜짐 · 돌아다니는 중'}</strong>
                 <span className={`robot-sync robot-sync-${robotSync.kind}`}>{robotSync.text}</span>
               </div>
               <button
