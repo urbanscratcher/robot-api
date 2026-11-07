@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, writeFile, unlink } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { fail, localFetch } from './local.ts';
@@ -36,7 +37,7 @@ async function storeGrant(grant: Grant) {
 async function readGrant(): Promise<Grant | null> {
   const config = oauthConfig(); if (!config) return null;
   let raw: string;
-  try { raw = await readFile(join(root, 'connection.json'), 'utf8'); }
+  try { raw = readFileSync(join(root, 'connection.json'), 'utf8'); }
   catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
   try {
     const box = JSON.parse(raw);

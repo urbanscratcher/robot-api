@@ -1,4 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fail } from './local.ts';
@@ -8,7 +9,7 @@ let pending: Promise<unknown> = Promise.resolve();
 
 export async function instagramPublishingStatus(): Promise<{ enabled: boolean }> {
   try {
-    const value = JSON.parse(await readFile(stateFile(), 'utf8'));
+    const value = JSON.parse(readFileSync(stateFile(), 'utf8'));
     if (typeof value.enabled !== 'boolean') throw Error('Instagram 게시 설정 파일이 올바르지 않습니다.');
     return { enabled: value.enabled };
   } catch (error) {

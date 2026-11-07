@@ -1,4 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { PiezoLevel } from '../src/publishing.ts';
@@ -12,7 +13,7 @@ export function validatePiezoLevel(value: unknown): asserts value is PiezoLevel 
 }
 export async function piezoStatus(now = Date.now()): Promise<{ level: PiezoLevel; expiresAt: number | null }> {
   let state;
-  try { state = JSON.parse(await readFile(stateFile(), 'utf8')); }
+  try { state = JSON.parse(readFileSync(stateFile(), 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { level: 0, expiresAt: null }; throw error; }
   if (state.level === 0 && state.expiresAt === null) return state;
   if ((state.level !== 1 && state.level !== 2) || !Number.isFinite(state.expiresAt)) throw Error('피에조 상태 파일이 올바르지 않습니다.');

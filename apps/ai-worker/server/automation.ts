@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { mkdir, writeFile, rename } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fail } from './local.ts';
 import { setPiezoLevel } from './piezo.ts';
@@ -79,7 +80,7 @@ function initialize() {
 }
 async function initializeState() {
   if (state) return;
-  try { state = JSON.parse(await readFile(path(), 'utf8')); }
+  try { state = JSON.parse(readFileSync(path(), 'utf8')); }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     state = { status: 'waiting' };
