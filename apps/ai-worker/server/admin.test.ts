@@ -18,7 +18,7 @@ test('public administrator login gates administrator operations, uses private se
   });
   let logs = ''; child.stdout.on('data', chunk => { logs += chunk; }); child.stderr.on('data', chunk => { logs += chunk; });
   const base = `http://127.0.0.1:${port}`;
-  const call = (path: string, value?: unknown, cookie = '', origin: string | undefined = 'https://h.joun.cc') => fetch(base + path, {
+  const call = (path: string, value?: unknown, cookie = '', origin: string | undefined = 'https://n.joun.cc') => fetch(base + path, {
     method: value === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json', 'X-Overheard-Public': '1', ...(origin ? { Origin: origin } : {}), ...(cookie ? { Cookie: cookie } : {}) },
     ...(value === undefined ? {} : { body: JSON.stringify(value) }),
   });

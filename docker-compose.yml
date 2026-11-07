@@ -23,7 +23,7 @@ services:
       PORT: 3000
       AI_WORKER_URL: http://ai-worker:3002
       OBSERVATION_TOKEN: ${OBSERVATION_TOKEN:-}
-      AI_ALLOWED_ORIGINS: ${AI_ALLOWED_ORIGINS:-https://n.joun.cc,https://h.joun.cc}
+      AI_ALLOWED_ORIGINS: ${AI_ALLOWED_ORIGINS:-https://n.joun.cc}
       # 설정하면 ESP32가 POST /api/hurt 할 때 Authorization: Bearer <토큰> 이 필요하다.
       HURT_TOKEN: ${HURT_TOKEN:-}
       # 로봇 주행 켜짐/꺼짐을 저장하는 파일 (다시 배포해도 유지되도록 볼륨에 둔다)
@@ -42,7 +42,7 @@ services:
     environment:
       API_HOST: 0.0.0.0
       API_PORT: 3002
-      ALLOWED_ORIGINS: ${AI_ALLOWED_ORIGINS:-https://n.joun.cc,https://h.joun.cc}
+      ALLOWED_ORIGINS: ${AI_ALLOWED_ORIGINS:-https://n.joun.cc}
       ADMIN_ORIGINS: ${AI_ADMIN_ORIGINS:-https://n.joun.cc}
     volumes:
       - ai-data:/app/data

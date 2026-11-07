@@ -48,7 +48,7 @@ export function isAdmin(req: IncomingMessage) {
   if ((sessions.get(key) ?? 0) > Date.now()) return true;
   sessions.delete(key); return false;
 }
-export const adminOrigins = () => (process.env.ADMIN_ORIGINS || 'https://h.joun.cc').split(',').map(value => value.trim()).filter(Boolean);
+export const adminOrigins = () => (process.env.ADMIN_ORIGINS || 'https://n.joun.cc').split(',').map(value => value.trim()).filter(Boolean);
 export function requireAdminOrigin(req: IncomingMessage) {
   if (!adminOrigins().includes(req.headers.origin || '')) fail('공개 사이트의 관리자 화면에서 요청하세요.', 403);
 }

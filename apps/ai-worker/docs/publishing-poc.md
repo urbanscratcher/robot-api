@@ -15,9 +15,9 @@
 ## 실행과 화면
 
 `npm run dev` 실행 후 http://localhost:5174 에서 검토 화면을 엽니다.
-기존 사진·녹음 화면은 `/capture`에서 유지합니다. `h.joun.cc`의 기존 공개 화면도 유지합니다.
+기존 사진·녹음 화면은 `/capture`에서 유지합니다. `n.joun.cc`의 기존 공개 화면도 유지합니다.
 검토·수정·게시 API는 기존 로컬 접근 정책 안에 두며 공개 터널에서 차단합니다.
-외부 홈서버의 수신 POST만 Origin 헤더 없이 Bearer 토큰으로 허용합니다. 기존 공개 터널을 쓸 경우 `https://h.joun.cc/api/observations`로 전송할 수 있습니다. 터널/서비스 재시작·배포는 이번 변경에 포함하지 않습니다.
+외부 홈서버의 수신 POST만 Origin 헤더 없이 Bearer 토큰으로 허용합니다. 기존 공개 터널을 쓸 경우 `https://n.joun.cc/api/observations`로 전송할 수 있습니다. 터널/서비스 재시작·배포는 이번 변경에 포함하지 않습니다.
 
 `.env.example`를 참고해 환경변수를 설정합니다. `npm run dev`와 `npm run serve:public`는 `.env`를 자동으로 읽습니다. 변경 후 해당 서버를 다시 시작하세요. 셸에 이미 export한 값은 `.env`보다 우선하므로 이전 수동 설정이 남아 있으면 해제하세요. 토큰은 프런트엔드에 전달하지 않습니다.
 
@@ -77,7 +77,7 @@ AI 실패는 failed로 남고 재시도할 수 있습니다. Meta 컨테이너 �
 2. Instagram → **API setup with Unified login**의 선택된 Configuration ID를 `INSTAGRAM_CONFIG_ID`에 넣습니다. 이는 Instagram 사용자 ID가 아닙니다.
 3. 설정 구성에는 Instagram 계정 자산과 `instagram_basic`, `instagram_content_publish` 권한이 필요합니다. 게시만 구현하므로 메시지·댓글 권한은 이 앱에서 사용하지 않습니다. 테스트 계정은 앱 역할과 계정/비즈니스 포트폴리오 권한을 갖춰야 합니다.
 4. `INSTAGRAM_API_VERSION`은 Meta 앱에서 지원하는 버전으로 설정합니다. 예시 파일은 `v26.0`입니다.
-5. **Redirect URL**에 `.env`의 `INSTAGRAM_REDIRECT_URI`와 정확히 같은 주소를 등록합니다. 기존 터널을 쓰는 예시는 `https://h.joun.cc/api/instagram/callback`입니다.
+5. **Redirect URL**에 `.env`의 `INSTAGRAM_REDIRECT_URI`와 정확히 같은 주소를 등록합니다. 기존 터널을 쓰는 예시는 `https://n.joun.cc/api/instagram/callback`입니다.
 6. 로컬 API와 공개 콜백 API를 모두 최신 코드로 실행합니다. 두 프로세스는 같은 프로젝트 폴더의 `.env`, `data/instagram/`을 공유해야 합니다. 공개 서비스의 코드 적용은 빌드와 서비스 재시작이 필요합니다. 이번 구현만으로 기존 공개 서비스에 자동 배포하지 않습니다.
 7. 로컬 검토 화면의 **인스타그램 연결**을 누르고 Meta에서 로그인·계정 공유를 승인합니다. Meta 콘솔의 정적인 Login URL 대신 이 버튼을 사용하세요. 버튼이 브라우저 확인용 state를 생성합니다.
 8. 콜백 화면의 **검토 화면으로 돌아가기**를 누르면, 처음 연결을 시작한 브라우저의 로컬 서버가 토큰 교환과 계정 조회를 완료합니다. 여러 계정을 승인했다면 게시 계정을 선택하세요. 한 계정이면 자동 선택합니다.
@@ -136,7 +136,7 @@ Publish 시 서버가 `/api/publish-images/<hash>.jpg?expires=...&signature=...`
 
 ### 공개 관리자 인증 추가
 
-앞선 로컬 전용 Claude 전환 제한을 확장했다. `/api/ai-settings`는 `editable`, `requiresAdmin`, `adminAvailable`만 추가로 알려주며 비밀값은 반환하지 않는다. `POST /api/admin/login`은 `{token}`으로 별도 관리자 접근 코드를 확인한 뒤 8시간의 보안 세션 쿠키를 설정하고, `POST /api/admin/logout`은 세션을 폐기한다. 공개 설정 변경은 이 세션과 정확한 Origin이 모두 필요하다. 공개 `/publish` 화면에서도 관리자 인증 후 초안 조회·생성·수정·Instagram 게시 및 계정 연결을 사용할 수 있다. 변경 요청에는 `https://h.joun.cc` Origin이 필요하다. 인증 없는 접근과 기존 재귀 세션 접근 제한은 유지한다.
+앞선 로컬 전용 Claude 전환 제한을 확장했다. `/api/ai-settings`는 `editable`, `requiresAdmin`, `adminAvailable`만 추가로 알려주며 비밀값은 반환하지 않는다. `POST /api/admin/login`은 `{token}`으로 별도 관리자 접근 코드를 확인한 뒤 8시간의 보안 세션 쿠키를 설정하고, `POST /api/admin/logout`은 세션을 폐기한다. 공개 설정 변경은 이 세션과 정확한 Origin이 모두 필요하다. 공개 `/publish` 화면에서도 관리자 인증 후 초안 조회·생성·수정·Instagram 게시 및 계정 연결을 사용할 수 있다. 변경 요청에는 `https://n.joun.cc` Origin이 필요하다. 인증 없는 접근과 기존 재귀 세션 접근 제한은 유지한다.
 
 ### 실물 피에조 단계 수신
 

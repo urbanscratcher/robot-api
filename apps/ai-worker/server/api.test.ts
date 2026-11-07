@@ -94,7 +94,7 @@ test("local API: multimodal generation, intervention, isolation and upstream fai
     assert.equal(captured.format.type, "object");
     assert.match(initial.data.article.title, /^\[허구\]/);
     assert.deepEqual(initial.data.article.quotes, []);
-    const published = await call(first, "https://h.joun.cc");
+    const published = await call(first, "https://n.joun.cc");
     assert.equal(published.status, 200);
     const blockedArchive = await fetch(
       `http://127.0.0.1:${apiPort}/api/sessions`,

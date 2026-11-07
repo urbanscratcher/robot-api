@@ -39,14 +39,14 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5174,
     strictPort: true,
-    allowedHosts: ["h.joun.cc"],
+    allowedHosts: ["n.joun.cc"],
     proxy,
   },
   preview: {
     host: "127.0.0.1",
     port: 4174,
     strictPort: true,
-    allowedHosts: ["h.joun.cc"],
+    allowedHosts: ["n.joun.cc"],
     proxy: {
       "/api": {
         ...proxy["/api"],

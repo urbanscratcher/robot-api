@@ -70,7 +70,7 @@ const server = createServer(async (req, res) => {
         "http://127.0.0.1:3002",
         "http://localhost:4174",
         "http://127.0.0.1:4174",
-        "https://h.joun.cc",
+        "https://n.joun.cc",
         ...(process.env.ALLOWED_ORIGINS || "").split(",").map(value => value.trim()).filter(Boolean),
       ].includes(req.headers.origin)
     )
@@ -90,7 +90,7 @@ const server = createServer(async (req, res) => {
     const publicRequest =
       req.headers["x-overheard-public"] === "1" ||
       !!req.headers["cf-connecting-ip"] ||
-      req.headers.origin === "https://h.joun.cc";
+      req.headers.origin === "https://n.joun.cc";
     if (path === '/api/received-transcripts' && req.method === 'GET') {
       if (publicRequest && !isAdmin(req)) fail('관리자 인증 후 수신 텍스트를 볼 수 있습니다.', 403);
       const items = await receivedTranscripts();

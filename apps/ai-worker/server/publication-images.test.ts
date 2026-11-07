@@ -9,7 +9,7 @@ test('uploaded images: JPEG validation, immutable storage and expiring public ac
   const dir = await mkdtemp(join(tmpdir(), 'overheard-images-'));
   process.env.PUBLICATION_IMAGES_DIR = dir;
   process.env.PUBLISH_MEDIA_SECRET = 'image-test-secret';
-  process.env.INSTAGRAM_MEDIA_ORIGIN = 'https://h.joun.cc';
+  process.env.INSTAGRAM_MEDIA_ORIGIN = 'https://n.joun.cc';
   const { savePublicationImage, readPublicationImage, publicationImageUrl, publicImageRoute } = await import('./publication-images.ts');
   const jpeg = await readFile(new URL('./fixtures/publication.jpg', import.meta.url));
   const server = createServer(async (req, res) => {

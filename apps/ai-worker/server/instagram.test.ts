@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 
 test('Unified OAuth: browser binding, one-time callback, encrypted grant, account selection and Graph host', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'overheard-instagram-'));
-  Object.assign(process.env, { INSTAGRAM_AUTH_DIR: dir, META_APP_ID: '123', META_APP_SECRET: 'test-secret', INSTAGRAM_CONFIG_ID: '456', INSTAGRAM_API_VERSION: 'v26.0', INSTAGRAM_REDIRECT_URI: 'https://h.joun.cc/api/instagram/callback' });
+  Object.assign(process.env, { INSTAGRAM_AUTH_DIR: dir, META_APP_ID: '123', META_APP_SECRET: 'test-secret', INSTAGRAM_CONFIG_ID: '456', INSTAGRAM_API_VERSION: 'v26.0', INSTAGRAM_REDIRECT_URI: 'https://n.joun.cc/api/instagram/callback' });
   const { instagramRoutes, instagramStatus, getInstagramConnection, instagramGraph } = await import('./instagram.ts');
   const nativeFetch = globalThis.fetch;
   let exchangeCount = 0, assigned: unknown[] = [{ id: '1001', username: 'first' }, { id: '1002', username: 'second' }];

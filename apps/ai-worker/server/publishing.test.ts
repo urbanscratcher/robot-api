@@ -14,7 +14,7 @@ test('observation intake, durable drafts, revision checks and publish uncertaint
   process.env.PUBLICATIONS_DIR = dir;
   process.env.PUBLICATION_IMAGES_DIR = join(dir, 'images');
   process.env.PUBLISH_MEDIA_SECRET = 'image-secret';
-  process.env.INSTAGRAM_MEDIA_ORIGIN = 'https://h.joun.cc';
+  process.env.INSTAGRAM_MEDIA_ORIGIN = 'https://n.joun.cc';
   process.env.OBSERVATION_TOKEN = 'test-intake';
   process.env.INSTAGRAM_ACCESS_TOKEN = 'test-instagram';
   process.env.INSTAGRAM_USER_ID = '123';
@@ -122,7 +122,7 @@ test('observation intake, durable drafts, revision checks and publish uncertaint
     assert.equal((await call('/api/observations/failed/publish', 'POST', { revision: uploaded.data.revision, accountId: '123' })).data.status, 'unknown');
     assert.equal((await call('/api/observations/failed/publish', 'POST', { revision: uploaded.data.revision, accountId: '123' })).status, 409);
     assert.equal(publishCount, 2);
-    assert.match(sentImageUrl, /^https:\/\/h\.joun\.cc\/api\/publish-images\/[a-f0-9]{64}\.jpg\?expires=/);
+    assert.match(sentImageUrl, /^https:\/\/n\.joun\.cc\/api\/publish-images\/[a-f0-9]{64}\.jpg\?expires=/);
     await writeFile(join(dir, 'interrupted.json'), JSON.stringify({ ...draft, input: { ...input, eventId: 'interrupted' }, status: 'publishing', workerPid: undefined }));
     assert.equal((await call('/api/observations/interrupted')).data.status, 'unknown');
     for (const status of ['publishing', 'generating'] as const) {
