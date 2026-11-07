@@ -165,6 +165,13 @@ test('mobile progress reports real stages and hides stale generation details', a
     assert.equal(status.total, null);
     assert.ok(!status.phase.includes('합성'));
   }
+  item.status = 'draft';
+  item.newsPublishedAt = '2026-11-07T04:01:45.000Z';
+  item.instagramSkipped = true;
+  const newsOnly = publicationStatus(item);
+  assert.equal(newsOnly.status, 'news_published');
+  assert.equal(newsOnly.publishedAt, item.newsPublishedAt);
+  assert.equal(newsOnly.phase, '뉴스 사이트 게시 완료');
 });
 
 test('robot SSE follows atomic saves from another writer through review, publishing and completion', async () => {

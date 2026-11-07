@@ -24,6 +24,7 @@ type UpdateHandler = (update: PublicationUpdate) => void
 
 const normalizeStatus = (status: string) => status.trim().toLowerCase().replace(/[\s-]+/g, '_')
 export const isPublished = (status: string) => normalizeStatus(status) === 'published'
+export const isNewsPublished = (status: string) => normalizeStatus(status) === 'news_published'
 export const isPublicationHandedOff = (status: string) =>
   normalizeStatus(status) === 'unknown'
 export const isArticleGenerating = (status: string) =>
@@ -31,7 +32,8 @@ export const isArticleGenerating = (status: string) =>
 export const isInstagramPublishing = (status: string) =>
   ['publishing', 'instagram_publishing'].includes(normalizeStatus(status))
 
-const isTerminalForCapture = (status: string) => isPublished(status) || isPublicationHandedOff(status)
+const isTerminalForCapture = (status: string) =>
+  isPublished(status) || isNewsPublished(status) || isPublicationHandedOff(status)
 
 export function publicationStage(publication: PublicationStatus) {
   const status = normalizeStatus(publication.status)
@@ -59,6 +61,7 @@ export function publicationStage(publication: PublicationStatus) {
     publishing: '인스타 게시 중',
     instagram_publishing: '인스타 게시 중',
     published: '인스타 게시 완료',
+    news_published: '뉴스 사이트 게시 완료',
     unknown: '게시 확인 필요',
     failed: '처리 실패',
     error: '처리 실패',

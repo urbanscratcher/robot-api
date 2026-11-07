@@ -9,6 +9,7 @@ import { startAudioTranscription, type AudioTranscriptionSession } from './audio
 import {
   isArticleGenerating,
   isInstagramPublishing,
+  isNewsPublished,
   isPublicationProblem,
   isPublished,
   publicationStage,
@@ -424,6 +425,8 @@ export default function App() {
         kind: 'ok',
         message: isPublished(completed.status)
           ? `게시 완료 · ${completed.eventId}`
+          : isNewsPublished(completed.status)
+            ? `뉴스 사이트 게시 완료 · ${completed.eventId}`
           : `게시 관리자 전달 완료 · ${completed.eventId}`,
       })
     } catch {
