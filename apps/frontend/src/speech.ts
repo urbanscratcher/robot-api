@@ -94,15 +94,17 @@ export function startListening(lang = 'ko-KR'): SpeechSession {
     recognition.continuous = true
     recognition.interimResults = true
     recognition.onresult = (event) => {
-      const finalSegments: string[] = []
+      // Safari/iOS에서는 stop() 직전까지 결과가 isFinal=false인 채로 남는 경우가 있다.
+      // 화면에 실제로 나타난 인식 결과를 모두 보관해야 마지막 문장이 사라지지 않는다.
+      const visibleSegments: string[] = []
       for (let i = 0; i < event.results.length; i += 1) {
         const text = event.results[i][0].transcript.trim()
         if (!text) continue
         heardSpeech = true
         lastResultAt = Date.now()
-        if (event.results[i].isFinal) finalSegments.push(text)
+        visibleSegments.push(text)
       }
-      current = mergeSegments(finalSegments)
+      current = mergeSegments(visibleSegments)
       activityChanged?.()
     }
     recognition.onerror = (event) => {
