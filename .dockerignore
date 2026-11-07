@@ -4,3 +4,10 @@ dist
 .DS_Store
 npm-debug.log*
 apps/backend/data
+
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/data
+**/*.tsbuildinfo

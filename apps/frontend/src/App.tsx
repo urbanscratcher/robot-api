@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RobotFace, type Expression } from './components/RobotFace'
 import { useCamera } from './hooks/useCamera'
-import { AUTO_CAPTURE, OBSERVATION_TOKEN, OBSERVATION_URL, VISIT } from './config'
+import { AUTO_CAPTURE, OBSERVATION_URL, VISIT } from './config'
 import { usePersonDetector } from './hooks/usePersonDetector'
 import { sendObservation, sendTranscript } from './observation'
 import { startListening, type SpeechSession } from './speech'
@@ -302,8 +302,8 @@ export default function App() {
 
   const runVisit = useCallback(async (detectedFrame?: Blob | null) => {
     if (visitPhaseRef.current !== 'idle') return
-    if (!OBSERVATION_URL || !OBSERVATION_TOKEN) {
-      setCapture({ kind: 'error', message: OBSERVATION_URL ? '토큰 미설정' : 'API 경로 미설정' })
+    if (!OBSERVATION_URL) {
+      setCapture({ kind: 'error', message: 'API 경로 미설정' })
       return
     }
     visitPhaseRef.current = 'running'

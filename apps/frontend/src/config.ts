@@ -1,12 +1,5 @@
-// 관리자 패널의 "사진 찍기" 버튼이 관찰 기록(사진)을 보낼 주소.
-// 실제 API는 https://h.joun.cc/api/observations 이지만, h.joun.cc가 n.joun.cc를 CORS로 허용하지 않아서
-// 같은 서버 경로로 보내고 nginx.conf(배포)·vite.config.ts(개발)가 h.joun.cc로 넘겨줍니다.
-// h.joun.cc가 https://n.joun.cc 를 허용하게 되면 여기에 전체 주소를 넣어도 됩니다.
+// 관측 요청은 같은 출처의 backend를 통해 내부 AI 서비스로 전달합니다.
 export const OBSERVATION_URL = '/api/observations'
-
-// Bearer 토큰은 코드에 적지 않고 apps/frontend/.env.local 의 VITE_OBSERVATION_TOKEN 에서 읽습니다.
-// .env.local 은 git에 올라가지 않습니다(*.local). 빌드된 JS에는 포함되니 공개 사이트에서는 주의하세요.
-export const OBSERVATION_TOKEN = import.meta.env.VITE_OBSERVATION_TOKEN ?? ''
 
 // 휴대폰에서 글자로 바꾼 대화를 보낼 주소. 몸통: { "text": "..." }  (토큰은 위와 같음)
 export const TRANSCRIPT_URL = '/api/transcripts'

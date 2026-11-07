@@ -1,0 +1,72 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "INPUT_IMAGE"
+    }
+  },
+  "3": {
+    "class_type": "ImageScaleToMaxDimension",
+    "inputs": {
+      "image": ["2", 0],
+      "upscale_method": "lanczos",
+      "largest_size": 768
+    }
+  },
+  "4": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": ["3", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "POSITIVE_PROMPT",
+      "clip": ["1", 1]
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "text, watermark, logo, distorted faces, extra limbs, low quality",
+      "clip": ["1", 1]
+    }
+  },
+  "7": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0],
+      "seed": 1,
+      "steps": 20,
+      "cfg": 6.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "positive": ["5", 0],
+      "negative": ["6", 0],
+      "latent_image": ["4", 0],
+      "denoise": 0.45
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["7", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["8", 0],
+      "filename_prefix": "THE_OVERHEARD/generation"
+    }
+  }
+}

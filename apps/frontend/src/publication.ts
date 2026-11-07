@@ -1,4 +1,4 @@
-import { OBSERVATION_TOKEN, PUBLICATIONS_URL } from './config'
+import { PUBLICATIONS_URL } from './config'
 
 export interface PublicationStatus {
   eventId: string
@@ -71,13 +71,8 @@ export function isPublicationProblem(status: string) {
     .includes(normalizeStatus(status))
 }
 
-function headers() {
-  return { Authorization: `Bearer ${OBSERVATION_TOKEN}` }
-}
-
 async function getPublication(eventId: string, signal: AbortSignal) {
   const response = await fetch(`${PUBLICATIONS_URL}/${encodeURIComponent(eventId)}`, {
-    headers: headers(),
     signal,
   })
   if (!response.ok) throw new Error(`publication status ${response.status}`)
@@ -118,7 +113,7 @@ async function waitForPublication(eventId: string, signal: AbortSignal, onUpdate
       if (isTerminalForCapture(current.status)) return current
 
       const response = await fetch(`${PUBLICATIONS_URL}/${encodeURIComponent(eventId)}/events`, {
-        headers: { ...headers(), Accept: 'text/event-stream' },
+        headers: { Accept: 'text/event-stream' },
         signal,
       })
       if (!response.ok || !response.body) throw new Error(`publication events ${response.status}`)

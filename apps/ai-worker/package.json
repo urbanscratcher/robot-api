@@ -1,0 +1,31 @@
+{
+  "name": "@robot-face/ai-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc -b && tsc -p tsconfig.server.json && vite build && node --env-file-if-exists=.env scripts/check-client-secrets.mjs",
+    "test": "node --experimental-strip-types --test server/automation.test.ts server/piezo.test.ts server/admin.test.ts server/client-secrets.test.ts server/card-preview.test.ts server/ai.test.ts src/domain.test.ts server/api.test.ts server/recursive.test.ts src/transcript.test.ts server/transcription.test.ts server/transcripts.test.ts server/publishing.test.ts server/instagram.test.ts server/publication-images.test.ts server/creative.test.ts server/news.test.ts server/news-pages.test.ts src/photo-response.test.ts",
+    "server": "node --experimental-strip-types server/index.ts",
+    "preview": "vite preview",
+    "serve:public": "node scripts/public.mjs",
+    "start": "node --env-file-if-exists=.env --experimental-strip-types server/index.ts",
+    "typecheck": "tsc -b && tsc -p tsconfig.server.json"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "tailwindcss": "^4.3.4",
+    "typescript": "~5.7.2",
+    "vite": "8.3.6"
+  }
+}

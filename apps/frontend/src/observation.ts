@@ -1,4 +1,4 @@
-import { CAMERA_ID, OBSERVATION_TOKEN, OBSERVATION_URL, TRANSCRIPT_URL } from './config'
+import { CAMERA_ID, OBSERVATION_URL, TRANSCRIPT_URL } from './config'
 
 export interface Observation {
   eventId: string
@@ -76,7 +76,6 @@ function postJson(url: string, body: unknown) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(OBSERVATION_TOKEN ? { Authorization: `Bearer ${OBSERVATION_TOKEN}` } : {}),
     },
     body: JSON.stringify(body),
   })

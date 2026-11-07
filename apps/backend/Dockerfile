@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY apps/frontend/package.json apps/frontend/package.json
 COPY apps/backend/package.json apps/backend/package.json
+COPY apps/ai-worker/package.json apps/ai-worker/package.json
 RUN npm ci
 COPY apps/backend apps/backend
 RUN npm run build -w @robot-face/backend

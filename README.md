@@ -91,3 +91,9 @@ docker compose config
 ```
 
 범위에서 의도적으로 제외한 기능: AI/Ollama, 업로드, 음성, Arduino 제어, 로그인, 데이터베이스.
+
+## AI 처리 서비스
+
+기존 사진·텍스트 수신과 게시 상태 요청은 이제 외부 AI 서버 대신 같은 Compose의 `ai-worker`로 전달됩니다. `apps/ai-worker`에 기존 처리 코드와 관리 화면을 보존했습니다. 브라우저에 `VITE_OBSERVATION_TOKEN`을 넣지 않으며 backend가 서버 전송 토큰을 사용합니다.
+
+루트 `.env.example`을 `.env`로 복사해 키와 도메인을 입력하세요. 같은 도메인에서 `/`는 로봇 화면, `/admin/`은 AI 모니터·관리자 화면입니다. 외부 프록시는 기존 8080 포트만 연결하면 됩니다. 도메인 연결, Meta 계정 연결과 기존 데이터 복사 절차는 [AI 서비스 이관 안내](docs/ai-service-migration.md)를 따르세요. 실제 키와 운영 데이터는 레포에 포함하지 않습니다.

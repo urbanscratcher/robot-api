@@ -1,3 +1,4 @@
+import { proxyAiRequest } from './ai-proxy.js'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -200,6 +201,8 @@ const server = createServer(async (request, response) => {
     json(response, 200, { ok: true, level, stage, strength, listeners: listeners.size })
     return
   }
+
+  if (proxyAiRequest(request, response)) return
 
   json(response, 404, { error: 'Not found' })
 })

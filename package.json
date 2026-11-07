@@ -11,7 +11,10 @@
     "dev:backend": "npm run dev -w @robot-face/backend",
     "build": "npm run build --workspaces --if-present",
     "start": "npm run start -w @robot-face/backend",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:ai": "npm run dev -w @robot-face/ai-worker",
+    "test:ai": "npm test -w @robot-face/ai-worker",
+    "test:integration": "npm run build -w @robot-face/backend && node --test tests/ai-*.test.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
