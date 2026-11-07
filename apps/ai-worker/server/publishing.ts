@@ -335,7 +335,21 @@ export async function publicationRoutes(req: IncomingMessage, res: ServerRespons
   }
   if (path === '/api/publishing/status') {
     if (req.method === 'POST') return send({ automation: await resumeAutomation() });
-    return send({ ...await instagramStatus(), instagramPublishing: await instagramPublishingStatus(), piezo: await piezoStatus(), automation: await automationStatus() });
+    const within = async <T>(label: string, work: Promise<T>, fallback: T) => {
+      let timer: ReturnType<typeof setTimeout>;
+      try {
+        return await Promise.race([work, new Promise<T>(resolve => { timer = setTimeout(() => {
+          console.warn(`[publishing-status] ${label} lookup timed out`); resolve(fallback);
+        }, 1500); timer.unref?.(); })]);
+      } finally { clearTimeout(timer!); }
+    };
+    const [instagram, instagramPublishing, piezo, automation] = await Promise.all([
+      within('instagram', instagramStatus(), { configured: false, oauthReady: false, redirectUri: '', accounts: [], selectedId: null, expired: false, mode: 'instagram' as const, missing: [] }),
+      within('instagram-publishing', instagramPublishingStatus(), { enabled: false }),
+      within('piezo', piezoStatus(), { level: 0 as const, expiresAt: null }),
+      within('automation', automationStatus(), { status: 'halted' as const, accepting: false, hasPhoto: false, hasTranscript: false, generateAt: null, eventId: null, error: '수신 상태 조회가 지연되고 있습니다.' }),
+    ]);
+    return send({ ...instagram, instagramPublishing, piezo, automation });
   }
   if (req.method === 'GET' && path === '/api/observations') {
     await mkdir(root, { recursive: true });
