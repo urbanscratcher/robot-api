@@ -97,7 +97,9 @@ async function initializeState() {
 }
 export async function automationStatus() {
   await initialize();
-  await writing;
+  // Status is an in-memory snapshot. Waiting for the persistence queue here can
+  // freeze every monitor poll after an intake/save stalls, even though the
+  // automation has already returned to a state that can accept the next pair.
   return { status: state.status, accepting: state.status === 'waiting' && !entering && !running && !externallyBusy(),
     hasPhoto: !!state.photoId, hasTranscript: !!state.transcriptId, generateAt: state.generateAt ?? null,
     eventId: state.eventId ?? null, error: state.error ?? null };

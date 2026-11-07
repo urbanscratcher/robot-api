@@ -48,6 +48,7 @@ test('server pairs fresh inputs, rejects busy uploads without reading, and halts
     await assert.rejects(resumeAutomation(), { status: 409 });
     assert.equal((await piezoStatus()).level, 2, 'level stays selected during processing');
     finish(); await waitFor('waiting');
+    assert.equal((await automationStatus()).accepting, true, 'completed publication immediately accepts the next pair');
     assert.equal((await piezoStatus()).level, 0, 'completed publication resets the level');
     await setPiezoLevel(1);
     assert.equal(count, 1); assert.equal((await automationStatus()).hasPhoto, false);
