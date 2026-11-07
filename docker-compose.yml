@@ -45,13 +45,10 @@ services:
       ALLOWED_ORIGINS: ${AI_ALLOWED_ORIGINS:-https://n.joun.cc}
       ADMIN_ORIGINS: ${AI_ADMIN_ORIGINS:-https://n.joun.cc}
     volumes:
-      - ai-data:/app/data
+      - /mnt/data/cam/ai-worker:/app/data
     restart: unless-stopped
 
 
 networks:
   proxy:
     external: true
-
-volumes:
-  ai-data:
