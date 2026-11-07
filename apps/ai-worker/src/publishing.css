@@ -85,6 +85,9 @@
 .monitor-signal small { color: #7b8291; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; }
 .monitor-signal.is-active { border-color: #6b57d3; background: #f0edff; color: #4731ae; }
 .monitor-signal.is-received { border-color: #45a887; background: #ebf8f3; color: #28755d; }
+.monitor-wait-progress { display: grid; gap: 8px; margin-top: 14px; }
+.monitor-wait-progress > div { display: flex; justify-content: space-between; align-items: baseline; color: #4c5363; }
+.monitor-wait-progress progress { width: 100%; height: 12px; accent-color: #6b57d3; }
 @keyframes monitor-pulse { 50% { opacity: .55; transform: scale(.82); } }
 @media (prefers-reduced-motion: reduce) { .status-pulse { animation: none; } }
 @media (max-width: 520px) { .monitor-hero, .monitor-status-panel { padding: 20px; } .monitor-signal-grid { grid-template-columns: 1fr; } .monitor-signal { grid-template-columns: 70px 1fr; align-items: center; } }

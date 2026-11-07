@@ -17,7 +17,7 @@ let photoTimer: ReturnType<typeof setTimeout> | undefined;
 function schedulePhoto() {
   clearTimeout(photoTimer);
   if (state.status !== 'waiting' || !state.photoId) return;
-  state.generateAt ??= Date.now() + 30_000;
+  state.generateAt ??= Date.now() + 10_000;
   photoTimer = setTimeout(() => { void generatePhoto(); }, Math.max(0, state.generateAt - Date.now()));
   photoTimer.unref?.();
 }
@@ -85,8 +85,9 @@ async function initializeState() {
     state = { status: 'waiting' };
   }
   if (state.status === 'waiting') {
-    state.transcriptId = undefined;
-    state.text = undefined;
+    const transcript = state.photoId ? (await receivedTranscripts()).find(item => item.interactionId === state.photoId) : undefined;
+    state.transcriptId = transcript?.id;
+    state.text = transcript?.text;
     schedulePhoto();
   }
   if (state.status === 'processing') {
@@ -98,7 +99,8 @@ export async function automationStatus() {
   await initialize();
   await writing;
   return { status: state.status, accepting: state.status === 'waiting' && !entering && !running && !externallyBusy(),
-    hasPhoto: !!state.photoId, hasTranscript: !!state.transcriptId, eventId: state.eventId ?? null, error: state.error ?? null };
+    hasPhoto: !!state.photoId, hasTranscript: !!state.transcriptId, generateAt: state.generateAt ?? null,
+    eventId: state.eventId ?? null, error: state.error ?? null };
 }
 export async function assertAutomationIdle() {
   await initialize();
@@ -145,14 +147,14 @@ export async function receiveAutomatic<T extends { id: string; text?: string } |
     if (kind === 'photo' && state.photoId) fail('이미 해당 입력을 받았습니다. 나머지 입력을 기다리고 있습니다.', 409);
     const receipt = await accept();
     if (!receipt) return receipt;
-    // The camera records for 10 seconds, then uploads the audio to local Whisper.
-    // Leave enough time for encoding, transcription and the final text request.
-    if (kind === 'photo') { state.photoId = receipt.id; state.generateAt = Date.now() + 30_000; }
+    // Give the matching transcript exactly 10 seconds to arrive. Generation starts
+    // at the deadline even when no transcript was received.
+    if (kind === 'photo') { state.photoId = receipt.id; state.generateAt = Date.now() + 10_000; }
     const transcript = state.photoId ? (await receivedTranscripts()).find(item => item.interactionId === state.photoId) : undefined;
     state.transcriptId = transcript?.id;
     state.text = transcript?.text;
     await save();
-    if (kind === 'photo') schedulePhoto();
+    schedulePhoto();
     return receipt;
   } finally { entering = false; intakeFinished = undefined; release(); }
 }

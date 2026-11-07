@@ -15,7 +15,7 @@ test('server pairs fresh inputs, rejects busy uploads without reading, and halts
   const { receiveAutomatic, automationStatus, setAutomationRunner, resumeAutomation, restartAutomation } = await import('./automation.ts');
   const { saveTranscript, receivedTranscripts } = await import('./transcript-store.ts');
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
-  const elapse = async () => { t.mock.timers.tick(30_000); await delay(30); };
+  const elapse = async () => { t.mock.timers.tick(10_000); await delay(30); };
   const finalText = async (interactionId: string, text: string) => {
     const receipt = await saveTranscript(text, { interactionId, startedAt: '2026-11-07T00:00:00.000Z', endedAt: '2026-11-07T00:00:20.000Z' });
     return receiveAutomatic('text', async () => receipt);
@@ -75,14 +75,14 @@ test('server pairs fresh inputs, rejects busy uploads without reading, and halts
     let timeoutPair: { photoId: string; text: string } | undefined;
     setAutomationRunner(async pair => { timeoutPair = pair; });
     await receiveAutomatic('photo', async () => ({ id: 'photo-timeout' }));
-    t.mock.timers.tick(29_999);
+    t.mock.timers.tick(9_999);
     assert.equal(timeoutPair, undefined);
     t.mock.timers.tick(1);
     await delay(30);
     assert.equal(timeoutPair?.photoId, 'photo-timeout');
-    assert.equal(timeoutPair?.text, '', 'no transcript generates from the photo alone');
+    assert.equal(timeoutPair?.text, '', 'generation starts after 10 seconds without text');
     await finalText('photo-timeout', 'late text');
-    assert.equal(timeoutPair?.text, '', 'late text cannot change an already started generation');
+    assert.equal(timeoutPair?.text, '', 'text received after the deadline cannot change generation');
     await resumeAutomation();
     let aborted = false;
     let settle!: () => void;

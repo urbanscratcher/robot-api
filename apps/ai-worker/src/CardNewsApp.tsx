@@ -7,7 +7,7 @@ import { RobotControl } from './RobotControl';
 import { PIEZO_LABELS, type Publication, type PiezoLevel } from './publishing';
 import './publishing.css';
 
-type Automation = { status: 'waiting' | 'processing' | 'halted'; accepting: boolean; hasPhoto: boolean; hasTranscript: boolean; eventId: string | null; error: string | null };
+type Automation = { status: 'waiting' | 'processing' | 'halted'; accepting: boolean; hasPhoto: boolean; hasTranscript: boolean; generateAt: number | null; eventId: string | null; error: string | null };
 type Status = { configured: boolean; oauthReady: boolean; expired: boolean; mode: 'system-user' | 'unified' | 'instagram'; redirectUri: string; selectedId: string | null; accounts: { id: string; username: string }[]; instagramPublishing: { enabled: boolean }; automation: Automation; piezo: { level: PiezoLevel; expiresAt: number | null } };
 export default function CardNewsApp() {
   const adminPanel = useRef<HTMLDetailsElement>(null);
@@ -21,6 +21,7 @@ export default function CardNewsApp() {
   const [message, setMessage] = useState('');
   const [refreshTick, setRefreshTick] = useState(0);
   const [restartTick, setRestartTick] = useState(0);
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (location.hash === '#monitor-admin' && adminPanel.current) adminPanel.current.open = true;
   }, []);
@@ -103,10 +104,18 @@ export default function CardNewsApp() {
     return () => { stopped = true; clearTimeout(timer); };
   }, [authorized, refreshTick]);
   const automation = status?.automation;
+  useEffect(() => {
+    if (!automation?.generateAt || automation.status !== 'waiting') return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(timer);
+  }, [automation?.generateAt, automation?.status]);
   const account = status?.accounts.find(account => account.id === status.selectedId);
   const level = status?.piezo.level ?? 0;
-  const labels = { received: '수신 완료', generating: '카드뉴스 생성 중', draft: '게시 준비 중', publishing: '인스타그램 게시 중', published: '게시 완료', failed: '생성 실패', unknown: '게시 확인 필요', skipped: '초점·흔들림으로 스킵' };
+  const labels = { received: '수신 완료', generating: '카드뉴스 생성 중', draft: '뉴스 게시 준비 중', publishing: '뉴스에 게시 중', published: '게시 완료', failed: '생성 실패', unknown: '게시 확인 필요', skipped: '초점·흔들림으로 스킵' };
   const instagramFailed = publication?.status === 'draft' && Boolean(publication.error) && Boolean(publication.newsPublishedAt);
+  const waitRemaining = automation?.generateAt ? Math.max(0, automation.generateAt - now) : 0;
+  const waitProgress = automation?.generateAt ? Math.min(10, Math.max(0, 10 - waitRemaining / 1000)) : 0;
   return <main className="publishing-shell card-preview-shell">
     <header className="monitor-hero">
       <p className="monitor-eyebrow">PAPARAZZI CONTROL CENTER</p>
@@ -125,8 +134,12 @@ export default function CardNewsApp() {
           <span className={`monitor-signal ${automation.hasPhoto ? 'is-received' : ''}`}><small>사진</small>{automation.hasPhoto ? '수신됨' : '대기'}</span>
           <span className={`monitor-signal ${automation.hasTranscript ? 'is-received' : ''}`}><small>텍스트</small>{automation.hasTranscript ? '수신됨' : '대기'}</span>
         </div>
+        {automation.hasPhoto && <div className="monitor-wait-progress">
+          <div><span>AI 생성까지</span><strong>{Math.ceil(waitRemaining / 1000)}초</strong></div>
+          <progress max="10" value={waitProgress} aria-label="AI 생성 대기 시간" />
+        </div>}
       </div> : <p className="monitor-primary-status" role="status">{!automation ? (authorized === false ? '관리자 인증 후 상태를 볼 수 있습니다.' : '서버 상태 확인 중…') : automation.status === 'halted' ? '자동 처리 중지 · 확인 필요' : automation.status === 'processing' ? (publication?.phase || (publication ? labels[publication.status] : '생성 준비 중')) : publication?.instagramSkipped ? '뉴스 사이트 게시 완료 · 인스타그램 게시 꺼짐' : instagramFailed ? '사이트 게시 완료 · 인스타그램 게시 실패' : publication?.status === 'unknown' ? '인스타그램 게시 여부 확인 필요' : '인스타그램 게시 완료'}</p>}
-      {automation?.status === 'waiting' && automation.hasPhoto && <p role="status">사진 수신 완료 · 10초 대기 후 자동 생성합니다. {automation.hasTranscript ? '텍스트 수신 완료' : '텍스트를 기다리는 중이며, 없으면 사진만 사용합니다.'}</p>}
+      {automation?.status === 'waiting' && automation.hasPhoto && <p role="status">사진 수신 완료 · {automation.hasTranscript ? '텍스트도 수신했습니다.' : '텍스트를 기다리는 중입니다.'} 10초가 끝나면 바로 AI로 생성해 뉴스에 게시합니다.</p>}
       {message && <p role="status">{message}</p>}
       {adminError && <p className="publication-error" role="alert">{adminError}</p>}
       {(error || automation?.error) && <p className="publication-error" role="alert">{error || automation?.error}</p>}

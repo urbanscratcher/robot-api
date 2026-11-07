@@ -10,7 +10,7 @@ export function publicationStatus(item: Publication) {
   const progress = item.status === 'generating' ? item.generationProgress : undefined;
   const status = item.status === 'generating' ? (progress?.stage ?? 'ai_generating')
     : item.status === 'draft' ? 'review_required' : item.status;
-  const labels = { received: '사진 수신 완료', ai_generating: 'AI 작성 중', cards_generating: '카드뉴스 생성 중', review_required: '검토 대기', publishing: '인스타그램 게시 중', published: '게시 완료', failed: '생성 실패', unknown: '게시 확인 필요', skipped: '초점·흔들림으로 스킵' };
+  const labels = { received: '사진 수신 완료', ai_generating: 'AI 작성 중', cards_generating: '카드뉴스 생성 중', review_required: '검토 대기', publishing: '뉴스에 게시 중', published: '게시 완료', failed: '생성 실패', unknown: '게시 확인 필요', skipped: '초점·흔들림으로 스킵' };
   return {
     eventId: item.input.eventId, status,
     phase: item.status === 'generating' ? (item.phase ?? labels[status]) : labels[status],

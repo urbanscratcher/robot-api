@@ -50,7 +50,7 @@ export function ReceivedPhotos({ onSelect, onPreparing, paused = false }: { paus
   }, [paused]);
   return <section aria-label="최신 수신 사진">
     <h2>최신 수신 사진</h2>
-    <p className="setup-note">{locked ? '관리자 인증을 완료하면 홈 서버에서 보낸 사진을 볼 수 있습니다.' : paused ? 'AI 생성·인스타그램 게시 중에는 새 사진 확인을 잠시 멈춥니다.' : '4초마다 새 사진을 확인하고 최신 사진을 자동으로 표시합니다.'}</p>
+    <p className="setup-note">{locked ? '관리자 인증을 완료하면 홈 서버에서 보낸 사진을 볼 수 있습니다.' : paused ? 'AI 생성·뉴스 게시 중에는 새 사진 확인을 잠시 멈춥니다.' : '4초마다 새 사진을 확인하고 최신 사진을 자동으로 표시합니다.'}</p>
     {!locked && !loaded && !error && <p role="status">수신 사진을 확인하고 있습니다.</p>}
     {!locked && loaded && !photo && !loading && !error && <p>아직 수신한 사진이 없습니다.</p>}
     {!locked && photo && <p>촬영 시각: {new Date(photo.capturedAt).toLocaleString('ko-KR')}</p>}

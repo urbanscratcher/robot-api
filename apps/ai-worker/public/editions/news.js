@@ -5,9 +5,17 @@ const slug = location.pathname.startsWith('/editions/') ? location.pathname.spli
 const mast = ['time', 'newyorker', 'atlantic', 'natgeo', 'wired'].includes(slug) ? '해커톤일보' : 'PAPARAZZI BOT';
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let stories = [], loaded = false, error = '', fetching = false, refreshPending = false;
+const ads = [
+  { imageId: '1BTgEHJzxzQFBHNyba-BPRZ2ru7gJ7G0K', href: 'https://sites.google.com/view/artist-sira', name: '강시라' },
+  { imageId: '1Y0Rc3FgPXkNLp8E52h3dyabjEW-xhB_e', href: 'https://www.instagram.com/return_of_unny?dlrf=OGNnZThuZDJybXN5', name: '정윤언' },
+  { imageId: '1A9w0McPd4s8vbdzDtzo_QUrtlnKlGpaL', href: 'https://docs.google.com/forms/d/e/1FAIpQLSesf50D9cIb_aI6nGy7vJnR-mEt2UxKhSFfGhMELKJJqYurSQ/viewform', name: '이형우' },
+  { imageId: '1xkA78MUCpONn8lcob11tIt-YjRNDOcHa', href: 'https://youtube.com/shorts/KZpt_9P7p9c?si=NXOdFInzQjRa3wJe', name: '아트팜엘케이' },
+];
+let adIndex = Math.floor(Math.random() * ads.length);
 const href = story => '#article/' + encodeURIComponent(story.id);
 const date = story => escape(new Date(story.publishedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }));
 const summary = story => escape(story.caption.replaceAll('\n', ' ').slice(0, 140));
+const newestFirst = (a, b) => String(b.publishedAt ?? '').localeCompare(String(a.publishedAt ?? '')) || String(a.id).localeCompare(String(b.id));
 function art(story, index = 0) {
   const src = story.images[index];
   if (!src || !(src.startsWith('/api/news/') || /^https:\/\//.test(src))) return '';
@@ -15,6 +23,13 @@ function art(story, index = 0) {
 }
 function item(story) {
   return `<article><div class="label">현장 · ${date(story)}</div><h2><a href="${href(story)}">${escape(story.title)}</a></h2><p>${summary(story)}</p></article>`;
+}
+function ad() {
+  const slide = (current, clone = false) => {
+    const image = `https://drive.google.com/thumbnail?id=${encodeURIComponent(current.imageId)}&sz=w1600`;
+    return `<div class="sponsor-slide"${clone ? ' aria-hidden="true"' : ''}><div class="label">ADVERTISEMENT · ${escape(current.name)}</div><a href="${escape(current.href)}" target="_blank" rel="noopener noreferrer sponsored" aria-label="${escape(current.name)} 광고 페이지로 이동 (새 창)"${clone ? ' tabindex="-1"' : ''}><img src="${image}" alt="${escape(current.name)} 광고" referrerpolicy="no-referrer"></a></div>`;
+  };
+  return `<aside class="sponsor-ad" aria-label="광고 캐러셀"><div class="sponsor-track" style="transform:translateX(-${adIndex * 100}%)">${ads.map(item => slide(item)).join('')}${slide(ads[0], true)}</div></aside>`;
 }
 function render() {
   const screen = location.hash === '#screen';
@@ -28,7 +43,7 @@ function render() {
   else if (key) content = story ? `<article class="detail"><a href="#">← 신문 홈</a><div class="label">현장 · ${date(story)}</div><h1>${escape(story.title)}</h1>${art(story)}<div class="article-copy">${story.caption.split(/\n+/).map(p => `<p>${escape(p)}</p>`).join('')}</div><div class="article-gallery">${story.images.slice(1).map((_, i) => art(story, i + 1)).join('')}</div></article>` : '<p>기사를 찾을 수 없습니다. <a href="#">신문 홈으로</a></p>';
   else if (!lead) content = '<p role="status">아직 게시된 기사가 없습니다. 검토 후 게시한 기사가 여기에 표시됩니다.</p>';
   else content = `<div class="ticker"><b>최신 기사</b><a href="${href(lead)}">${escape(lead.title)}</a></div><div class="bodygrid"><section class="lead"><div class="label">${escape(edition[3])} · ${date(lead)}</div><h1><a href="${href(lead)}">${escape(lead.title)}</a></h1><p class="deck">${summary(lead)}</p><a href="${href(lead)}">기사 전문 읽기 →</a>${art(lead)}</section>${stories.length > 1 ? `<aside class="aside"><div class="label">함께 읽기</div>${stories.slice(1, 3).map(item).join('')}</aside>` : ''}</div><div class="cards">${stories.slice(3).map(item).join('')}</div>`;
-  app.innerHTML = `<header><div class="meta">${escape(edition[2])} / ${escape(edition[1])}</div><div class="mast"><a href="#">${mast}</a></div><nav class="nav" aria-label="신문 스타일">${Object.entries(editions).map(([path, name]) => `<a href="/${path}"${path === slug ? ' aria-current="page"' : ''}>${name}</a>`).join('')}</nav></header><main><p class="notice">AI가 생성한 전시 작품 속 기사 · 실제 언론사와 무관한 독립 전시입니다.${error && loaded ? ' · ' + error : ''}</p><aside class="hack-ad" aria-label="해커톤 광고"><div><div class="label">광고 · 해커톤 참가작</div><h2>2026 아트코리아랩 예술 해커톤</h2><p>휴먼 인 더 루프 · 3조 〈PAPARAZZI BOT〉</p><p>당신의 반응이 AI 기자의 다음 기사를 바꿉니다.</p></div><a href="https://docs.google.com/presentation/d/1MKCZO1rljj_4Z0fuTwrYCNkvjMpsxXj2/edit?slide=id.p1#slide=id.p1" target="_blank" rel="noopener noreferrer">해커톤 슬라이드 보기 ↗</a></aside>${content}</main><footer>PAPARAZZI BOT · TEAM 03 · AI 생성 전시 기사</footer>`;
+  app.innerHTML = `<header><div class="meta">${escape(edition[2])} / ${escape(edition[1])}</div><div class="mast"><a href="#">${mast}</a></div><nav class="nav" aria-label="신문 스타일">${Object.entries(editions).map(([path, name]) => `<a href="/${path}"${path === slug ? ' aria-current="page"' : ''}>${name}</a>`).join('')}</nav></header><main><p class="notice">AI가 생성한 전시 작품 속 기사 · 실제 언론사와 무관한 독립 전시입니다.${error && loaded ? ' · ' + error : ''}</p>${ad()}${content}</main><footer>PAPARAZZI BOT · TEAM 03 · AI 생성 전시 기사</footer>`;
   document.title = (story?.title || edition[2]) + ' · PAPARAZZI BOT';
 }
 async function refresh() {
@@ -40,7 +55,7 @@ async function refresh() {
     const data = await response.json();
     if (!Array.isArray(data.items)) throw Error();
     const changed = !loaded || error || JSON.stringify(stories) !== JSON.stringify(data.items);
-    stories = data.items; loaded = true; error = '';
+    stories = [...data.items].sort(newestFirst); loaded = true; error = '';
     if (changed) render();
   } catch {
     error = '최신 기사를 불러오지 못했습니다. 잠시 후 다시 연결합니다.';
@@ -69,3 +84,21 @@ if (typeof EventSource !== 'undefined') {
   updates.addEventListener('ready', refresh);
 }
 setInterval(refresh, 10000);
+setInterval(() => {
+  if (ads.length < 2 || document.hidden) return;
+  const track = document.querySelector('.sponsor-track');
+  if (!track) return;
+  adIndex += 1;
+  track.classList.add('is-moving');
+  track.style.transform = `translateX(-${adIndex * 100}%)`;
+  if (adIndex === ads.length) {
+    const reset = () => {
+      if (adIndex !== ads.length) return;
+      track.classList.remove('is-moving');
+      adIndex = 0;
+      track.style.transform = 'translateX(0)';
+    };
+    track.addEventListener('transitionend', reset, { once: true });
+    setTimeout(reset, 300);
+  }
+}, 3000);

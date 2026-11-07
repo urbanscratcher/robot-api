@@ -27,6 +27,10 @@ test('edition renderer handles empty, one and many articles, escapes text and pr
     runInNewContext(source, context);
     await new Promise(r => setImmediate(r));
     assert.match(app.innerHTML, /아직 게시된 기사가 없습니다/);
+    assert.match(app.innerHTML, /class="sponsor-ad"/);
+    assert.match(app.innerHTML, /https:\/\/drive\.google\.com\/thumbnail\?id=/);
+    assert.match(app.innerHTML, /rel="noopener noreferrer sponsored"/);
+    assert.match(app.innerHTML, /target="_blank"/);
     items = [photo];
     events.published(); await new Promise(r => setImmediate(r));
     assert.match(app.innerHTML, /&lt;img onerror=alert\(1\)&gt;/);
@@ -34,9 +38,11 @@ test('edition renderer handles empty, one and many articles, escapes text and pr
     assert.ok(!app.innerHTML.includes('undefined'));
     location.hash = '#article/old'; listeners.hashchange();
     assert.match(app.innerHTML, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
-    items = [{ ...photo, id: 'new' }, photo];
+    items = [photo, { ...photo, id: 'new', title: '가장 최신 헤드라인', publishedAt: '2026-11-06T12:00:00Z' }];
     listeners.online(); await new Promise(r => setImmediate(r));
     assert.match(app.innerHTML, /src="\/api\/news\/old\/images\/0"/);
+    location.hash = ''; listeners.hashchange();
+    assert.match(app.innerHTML, /<h1><a href="#article\/new">가장 최신 헤드라인<\/a><\/h1>/);
     location.hash = '#article/missing'; listeners.hashchange();
     assert.match(app.innerHTML, /기사를 찾을 수 없습니다/);
     location.hash = '#screen'; listeners.hashchange();
