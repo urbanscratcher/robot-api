@@ -73,6 +73,8 @@ AI 실패는 failed로 남고 재시도할 수 있습니다. Meta 컨테이너 �
 
 ## Instagram Unified login 연결
 
+앱과 게시할 Instagram 계정을 같은 Business Portfolio가 소유하는 자체 운영 환경에서는 Unified Login이 만든 숨은 Business Integration System User에 같은 포트폴리오 자산이 위임되지 않아 `assigned_instagram_accounts`가 빈 배열이 될 수 있다. 이 경우 Business Settings의 **Users → System users**에서 명시적 System User를 만들고, Instagram 계정의 콘텐츠 권한을 자산으로 할당한 다음 앱의 `instagram_basic`, `instagram_content_publish` 권한으로 토큰을 생성한다. `.env`의 `INSTAGRAM_SYSTEM_USER_ACCESS_TOKEN`과 Instagram 프로페셔널 계정의 숫자 ID인 `INSTAGRAM_SYSTEM_USER_ID`를 설정하면 이 연결을 우선 사용한다. System User 자체 ID를 넣지 않는다.
+
 1. Meta 앱의 **App settings → Basic**에서 App ID와 App Secret을 확인합니다. `.env`의 `META_APP_ID`, `META_APP_SECRET`에 넣습니다. 시크릿을 채팅이나 프런트엔드에 넣지 마세요.
 2. Instagram → **API setup with Unified login**의 선택된 Configuration ID를 `INSTAGRAM_CONFIG_ID`에 넣습니다. 이는 Instagram 사용자 ID가 아닙니다.
 3. 설정 구성에는 Instagram 계정 자산과 `instagram_basic`, `instagram_content_publish` 권한이 필요합니다. 게시만 구현하므로 메시지·댓글 권한은 이 앱에서 사용하지 않습니다. 테스트 계정은 앱 역할과 계정/비즈니스 포트폴리오 권한을 갖춰야 합니다.

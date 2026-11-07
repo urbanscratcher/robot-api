@@ -56,6 +56,17 @@ test('Unified OAuth: browser binding, one-time callback, encrypted grant, accoun
     return { state: url.searchParams.get('state')!, cookie: response.cookie! };
   }
   const callback = (state: string, extra = 'code=test-code') => call(`/api/instagram/callback?state=${state}&${extra}`, { get: true, public: true });
+  await t.test('explicit system user connection takes precedence', async () => {
+    process.env.INSTAGRAM_SYSTEM_USER_ACCESS_TOKEN = 'system-token';
+    process.env.INSTAGRAM_SYSTEM_USER_ID = '17841400000000000';
+    const connection = await getInstagramConnection();
+    assert.equal(connection?.host, 'graph.facebook.com');
+    assert.equal(connection?.token, 'system-token');
+    assert.equal(connection?.userId, '17841400000000000');
+    assert.equal((await instagramStatus()).mode, 'system-user');
+    delete process.env.INSTAGRAM_SYSTEM_USER_ACCESS_TOKEN;
+    delete process.env.INSTAGRAM_SYSTEM_USER_ID;
+  });
   try {
     assert.equal((await instagramStatus()).configured, false);
     assert.equal((await call('/api/instagram/connect', { public: true })).status, 403);

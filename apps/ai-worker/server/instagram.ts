@@ -48,6 +48,10 @@ async function readGrant(): Promise<Grant | null> {
   } catch { return null; }
 }
 export async function getInstagramConnection(): Promise<InstagramConnection | null> {
+  const { INSTAGRAM_SYSTEM_USER_ACCESS_TOKEN: systemToken, INSTAGRAM_SYSTEM_USER_ID: systemUserId, INSTAGRAM_API_VERSION: systemVersion } = process.env;
+  if (systemToken && systemUserId && /^\d+$/.test(systemUserId) && systemVersion && /^v\d+\.\d+$/.test(systemVersion)) {
+    return { token: systemToken, userId: systemUserId, version: systemVersion, host: 'graph.facebook.com', secret: process.env.META_APP_SECRET };
+  }
   const config = oauthConfig();
   if (config) {
     const grant = await readGrant();
@@ -63,7 +67,8 @@ export async function instagramStatus() {
   const grant = await readGrant();
   const expired = !!(grant?.expiresAt && grant.expiresAt <= Date.now());
   const connection = await getInstagramConnection();
-  return { configured: !!connection, oauthReady: !!config, redirectUri: config?.redirectUri ?? process.env.INSTAGRAM_REDIRECT_URI ?? `http://localhost:5174${callbackPath}`, accounts: expired ? [] : grant?.accounts ?? [], selectedId: grant?.selectedId ?? connection?.userId ?? null, expired, mode: config ? 'unified' : 'instagram', missing: [!process.env.META_APP_ID && 'META_APP_ID', !process.env.META_APP_SECRET && 'META_APP_SECRET', !process.env.INSTAGRAM_CONFIG_ID && 'INSTAGRAM_CONFIG_ID', !process.env.INSTAGRAM_API_VERSION && 'INSTAGRAM_API_VERSION'].filter(Boolean) };
+  const systemConfigured = !!(process.env.INSTAGRAM_SYSTEM_USER_ACCESS_TOKEN && process.env.INSTAGRAM_SYSTEM_USER_ID);
+  return { configured: !!connection, oauthReady: !!config, redirectUri: config?.redirectUri ?? process.env.INSTAGRAM_REDIRECT_URI ?? `http://localhost:5174${callbackPath}`, accounts: expired || systemConfigured ? [] : grant?.accounts ?? [], selectedId: systemConfigured ? connection?.userId ?? null : grant?.selectedId ?? connection?.userId ?? null, expired: systemConfigured ? false : expired, mode: systemConfigured ? 'system-user' : config ? 'unified' : 'instagram', missing: [!process.env.META_APP_ID && 'META_APP_ID', !process.env.META_APP_SECRET && 'META_APP_SECRET', !process.env.INSTAGRAM_CONFIG_ID && 'INSTAGRAM_CONFIG_ID', !process.env.INSTAGRAM_API_VERSION && 'INSTAGRAM_API_VERSION'].filter(Boolean) };
 }
 export async function instagramGraph(config: InstagramConnection, path: string, params?: Record<string, string>) {
   const url = new URL(`https://${config.host}/${config.version}/${path}`);

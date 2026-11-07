@@ -7,7 +7,7 @@ import { PIEZO_LABELS, type Publication, type PiezoLevel } from './publishing';
 import './publishing.css';
 
 type Automation = { status: 'waiting' | 'processing' | 'halted'; accepting: boolean; hasPhoto: boolean; hasTranscript: boolean; eventId: string | null; error: string | null };
-type Status = { configured: boolean; oauthReady: boolean; expired: boolean; redirectUri: string; selectedId: string | null; accounts: { id: string; username: string }[]; automation: Automation; piezo: { level: PiezoLevel; expiresAt: number | null } };
+type Status = { configured: boolean; oauthReady: boolean; expired: boolean; mode: 'system-user' | 'unified' | 'instagram'; redirectUri: string; selectedId: string | null; accounts: { id: string; username: string }[]; automation: Automation; piezo: { level: PiezoLevel; expiresAt: number | null } };
 export default function CardNewsApp() {
   const adminPanel = useRef<HTMLDetailsElement>(null);
   const [status, setStatus] = useState<Status | null>(null);
@@ -141,15 +141,17 @@ export default function CardNewsApp() {
           setMessage(`피에조 ${piezo.level}단계를 적용했습니다.`);
         })} />
         <section className="instagram-connection" aria-label="인스타그램 연결">
-          <div><h2>인스타그램 계정</h2><p>{status.configured ? (account ? `@${account.username} 계정에 자동 게시합니다.` : `연결된 계정 ID: ${status.selectedId}`) : status.expired ? '연결이 만료되었습니다. 다시 로그인하세요.' : '자동 게시할 계정을 연결하세요.'}</p></div>
-          <button disabled={working || automation?.status === 'processing' || !status.oauthReady} onClick={() => {
-            const popup = window.open('about:blank', 'instagram-oauth', 'popup,width=720,height=820');
-            void act(() => connectInstagram(popup));
-          }}>{status.configured ? '인스타그램 다시 연결' : '인스타그램 연결'}</button>
-          <button disabled={working || automation?.status === 'processing'} onClick={() => void act(completeConnection)}>연결 확인</button>
-          {!status.oauthReady && <p className="setup-note">서버의 Meta 앱 연결 설정이 필요합니다.</p>}
-          <details><summary>연결 설정 정보</summary><p>Meta에 등록할 Redirect URL</p><code>{status.redirectUri}</code></details>
-          {status.accounts.length > 1 && <label className="account-picker">게시 계정<select value={status.selectedId ?? ''} disabled={working || automation?.status === 'processing'} onChange={event => {
+          <div><h2>인스타그램 계정</h2><p>{status.mode === 'system-user' && status.configured ? `서버 시작 설정으로 연결됨 · 계정 ID: ${status.selectedId}` : status.configured ? (account ? `@${account.username} 계정에 자동 게시합니다.` : `연결된 계정 ID: ${status.selectedId}`) : status.expired ? '연결이 만료되었습니다. 다시 로그인하세요.' : '자동 게시할 계정을 연결하세요.'}</p></div>
+          {status.mode !== 'system-user' && <>
+            <button disabled={working || automation?.status === 'processing' || !status.oauthReady} onClick={() => {
+              const popup = window.open('about:blank', 'instagram-oauth', 'popup,width=720,height=820');
+              void act(() => connectInstagram(popup));
+            }}>{status.configured ? '인스타그램 다시 연결' : '인스타그램 연결'}</button>
+            <button disabled={working || automation?.status === 'processing'} onClick={() => void act(completeConnection)}>연결 확인</button>
+            {!status.oauthReady && <p className="setup-note">서버의 Meta 앱 연결 설정이 필요합니다.</p>}
+            <details><summary>연결 설정 정보</summary><p>Meta에 등록할 Redirect URL</p><code>{status.redirectUri}</code></details>
+          </>}
+          {status.mode !== 'system-user' && status.accounts.length > 1 && <label className="account-picker">게시 계정<select value={status.selectedId ?? ''} disabled={working || automation?.status === 'processing'} onChange={event => {
             const userId = event.target.value;
             if (userId) void act(async () => { await request('/api/instagram/account', { userId }); });
           }}><option value="" disabled>게시할 계정을 선택하세요</option>{status.accounts.map(account => <option key={account.id} value={account.id}>@{account.username}</option>)}</select></label>}
