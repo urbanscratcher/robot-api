@@ -11,7 +11,7 @@ test('Unified OAuth: browser binding, one-time callback, encrypted grant, accoun
   const { instagramRoutes, instagramStatus, getInstagramConnection, instagramGraph } = await import('./instagram.ts');
   const nativeFetch = globalThis.fetch;
   let exchangeCount = 0, assigned: unknown[] = [{ id: '1001', username: 'first' }, { id: '1002', username: 'second' }];
-  let failExchange = false;
+  let failExchange = false, graphError = false;
   t.mock.method(globalThis, 'fetch', async (url: string | URL | Request, init?: RequestInit) => {
     const value = new URL(String(url));
     if (value.hostname !== 'graph.facebook.com') return nativeFetch(url, init);
@@ -31,6 +31,7 @@ test('Unified OAuth: browser binding, one-time callback, encrypted grant, accoun
     }
     assert.equal(value.pathname, '/v26.0/1002/media');
     assert.equal(new URLSearchParams(String(init?.body)).get('caption'), 'reviewed');
+    if (graphError) return Response.json({ error: { message: 'Application request limit reached', code: 9, error_subcode: 2207042 } }, { status: 400 });
     return Response.json({ id: 'container' });
   });
   const server = createServer(async (req, res) => {
@@ -93,6 +94,9 @@ test('Unified OAuth: browser binding, one-time callback, encrypted grant, accoun
     const connected = await getInstagramConnection(); assert.equal(connected?.host, 'graph.facebook.com');
     assert.equal(connected?.userId, '1002');
     assert.equal((await instagramGraph(connected!, '1002/media', { caption: 'reviewed' })).id, 'container');
+    graphError = true;
+    await assert.rejects(() => instagramGraph(connected!, '1002/media', { caption: 'reviewed' }), /code 9, subcode 2207042.*Application request limit reached/);
+    graphError = false;
     assert.equal((await instagramStatus()).configured, true);
     const denied = await begin(); await callback(denied.state, 'error=access_denied');
     assert.equal((await call('/api/instagram/complete', { cookie: denied.cookie })).status, 400);

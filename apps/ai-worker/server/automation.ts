@@ -17,7 +17,7 @@ let photoTimer: ReturnType<typeof setTimeout> | undefined;
 function schedulePhoto() {
   clearTimeout(photoTimer);
   if (state.status !== 'waiting' || !state.photoId) return;
-  state.generateAt ??= Date.now() + 10_000;
+  state.generateAt ??= Date.now() + 30_000;
   photoTimer = setTimeout(() => { void generatePhoto(); }, Math.max(0, state.generateAt - Date.now()));
   photoTimer.unref?.();
 }
@@ -145,7 +145,9 @@ export async function receiveAutomatic<T extends { id: string; text?: string } |
     if (kind === 'photo' && state.photoId) fail('이미 해당 입력을 받았습니다. 나머지 입력을 기다리고 있습니다.', 409);
     const receipt = await accept();
     if (!receipt) return receipt;
-    if (kind === 'photo') { state.photoId = receipt.id; state.generateAt = Date.now() + 10_000; }
+    // The camera records for 10 seconds, then uploads the audio to local Whisper.
+    // Leave enough time for encoding, transcription and the final text request.
+    if (kind === 'photo') { state.photoId = receipt.id; state.generateAt = Date.now() + 30_000; }
     const transcript = state.photoId ? (await receivedTranscripts()).find(item => item.interactionId === state.photoId) : undefined;
     state.transcriptId = transcript?.id;
     state.text = transcript?.text;

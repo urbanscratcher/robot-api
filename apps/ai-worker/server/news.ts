@@ -13,7 +13,9 @@ async function visibleArticle(id: string) {
   let item: Publication;
   try { item = JSON.parse(await readFile(join(root, `${id}.json`), 'utf8')); }
   catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
-  return item.status === 'published' || item.status === 'unknown' ? item : null;
+  // New articles are published to the exhibition newspaper independently of
+  // Instagram. Keep legacy Instagram-published records visible as well.
+  return item.newsPublishedAt || item.status === 'published' || item.status === 'unknown' ? item : null;
 }
 
 export async function newsRoutes(req: IncomingMessage, res: ServerResponse, path: string) {
@@ -46,17 +48,16 @@ export async function newsRoutes(req: IncomingMessage, res: ServerResponse, path
     let names: string[];
     try { names = await readdir(root); }
     catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e; names = []; }
-    const items = [];
-    for (const name of names.filter(n => n.endsWith('.json') && validId.test(n.slice(0, -5)))) {
+    const items = (await Promise.all(names.filter(n => n.endsWith('.json') && validId.test(n.slice(0, -5))).map(async name => {
       const item = await visibleArticle(name.slice(0, -5));
-      if (!item) continue;
+      if (!item) return null;
       const id = name.slice(0, -5);
       const images = item.cards?.length
         ? item.cards.map((_, i) => `/api/news/${id}/images/${i}`)
         : item.uploadedImageId ? [`/api/news/${id}/images/0`] : item.imageUrl ? [item.imageUrl] : [];
-      items.push({ id, title: item.cards?.[0]?.title || item.caption.split('\n').find(s => s.trim()) || '현장 기사',
-        caption: item.caption, images, publishedAt: item.publishedAt || item.input.capturedAt });
-    }
+      return { id, title: item.cards?.[0]?.title || item.caption.split('\n').find(s => s.trim()) || '현장 기사',
+        caption: item.caption, images, publishedAt: item.newsPublishedAt || item.publishedAt || item.input.capturedAt };
+    }))).filter(item => item !== null);
     items.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || a.id.localeCompare(b.id));
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');

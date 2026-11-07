@@ -35,7 +35,7 @@ async function refresh() {
   if (fetching) { refreshPending = true; return; }
   fetching = true;
   try {
-    const response = await fetch('/api/news', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+    const response = await fetch('/api/news', { cache: 'no-store', signal: AbortSignal.timeout(30000) });
     if (!response.ok) throw Error();
     const data = await response.json();
     if (!Array.isArray(data.items)) throw Error();

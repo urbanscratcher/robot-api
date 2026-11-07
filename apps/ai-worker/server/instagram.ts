@@ -82,7 +82,16 @@ export async function instagramGraph(config: InstagramConnection, path: string, 
     }, 30000);
   } catch { fail('Meta 서버 연결 실패 또는 시간 초과입니다.', 502); }
   let data; try { data = await response.json(); } catch { fail('Meta 응답을 읽지 못했습니다.', 502); }
-  if (!response.ok || data.error) fail(`인스타그램 요청 실패 (${response.status}, code ${data.error?.code ?? 'unknown'}). 계정 권한·토큰·공개 이미지 URL을 확인하세요.`, 502);
+  if (!response.ok || data.error) {
+    const error = data.error ?? {};
+    const code = error.code ?? 'unknown';
+    const subcode = error.error_subcode == null ? '' : `, subcode ${error.error_subcode}`;
+    const detail = typeof error.error_user_msg === 'string' && error.error_user_msg.trim()
+      ? error.error_user_msg.trim()
+      : typeof error.message === 'string' ? error.message.trim() : '';
+    const safeDetail = detail.replace(/\s+/g, ' ').slice(0, 300);
+    fail(`인스타그램 요청 실패 (${response.status}, code ${code}${subcode})${safeDetail ? `: ${safeDetail}` : '. 계정 권한·토큰·공개 이미지 URL을 확인하세요.'}`, 502);
+  }
   return data;
 }
 async function jsonBody(req: IncomingMessage) {

@@ -15,6 +15,7 @@ import type { Observation, Publication } from '../src/publishing.ts';
 import { fail, localPort } from './local.ts';
 import { inspectWav, transcribeAudio } from './transcription.ts';
 import { publicationStatus, subscribePublication, notifyPublication, closePublicationEvents } from './publication-events.ts';
+import { instagramPublishingStatus, setInstagramPublishing } from './instagram-publishing-setting.ts';
 
 const root = resolve(process.env.PUBLICATIONS_DIR || 'data/publications');
 const busy = new Set<string>();
@@ -83,7 +84,7 @@ async function generate(item: Publication) {
   await save(item);
   try {
     if (item.input.audio) {
-      const result = await transcribeAudio(Buffer.from(item.input.audio.split(',')[1], 'base64'), `http://127.0.0.1:${localPort(process.env.WHISPER_PORT, 8080)}`);
+      const result = await transcribeAudio(Buffer.from(item.input.audio.split(',')[1], 'base64'), process.env.WHISPER_URL || `http://127.0.0.1:${localPort(process.env.WHISPER_PORT, 8080)}`);
       item.transcript = result.text;
     }
     const response = await chatFetch({
@@ -102,6 +103,7 @@ async function generate(item: Publication) {
     const result = JSON.parse(data.message?.content);
     if (typeof result.caption !== 'string' || !result.caption.trim() || [...result.caption].length > 2200) throw Error('AI 초안이 비어 있거나 2,200자를 초과합니다. 다시 생성하세요.');
     item.caption = result.caption.trim(); item.revision++; item.status = 'draft';
+    item.newsPublishedAt ||= new Date().toISOString();
   } catch (e) { item.status = 'failed'; item.error = message(e); }
   await save(item);
 }
@@ -130,6 +132,7 @@ async function generateCreative(item: Publication, signal?: AbortSignal) {
     item.caption = result.caption; item.cards = cards; item.uploadedImageId = cards[0].imageId; item.imageUrl = '';
     item.generatedImagePrompt = result.imagePrompt; item.imageSeed = result.seed;
     item.revision++; item.status = 'draft'; item.phase = undefined;
+    item.newsPublishedAt ||= new Date().toISOString();
   } catch (e) { item.status = 'failed'; item.phase = undefined; item.error = (task.controller.signal.aborted || signal?.aborted) ? '생성이 중단되었습니다. 다시 시도하세요.' : message(e); }
   finally { clearTimeout(timer); creative = null; }
   await save(item);
@@ -146,12 +149,24 @@ async function waitForContainer(config: NonNullable<Awaited<ReturnType<typeof ge
 async function publish(item: Publication, accountId: unknown, signal?: AbortSignal) {
   if (item.status === 'published') return item;
   if (item.status !== 'draft') fail('검토 가능한 초안만 게시할 수 있습니다.', 409);
+  // The exhibition newspaper is an independent publishing destination. Make the
+  // reviewed article visible before attempting Instagram so a missing account or
+  // any Graph API failure cannot prevent local publication.
+  if (!item.newsPublishedAt) {
+    item.newsPublishedAt = new Date().toISOString();
+    await save(item);
+  }
+  if (!(await instagramPublishingStatus()).enabled) {
+    item.status = 'draft'; item.error = undefined; item.instagramSkipped = true;
+    await save(item);
+    return item;
+  }
   const config = await getInstagramConnection();
   if (!config) fail('인스타그램 연결 설정이 필요합니다.', 503);
   if (accountId !== config.userId) fail('게시 계정이 변경되었습니다. 최신 연결 계정을 확인하고 다시 검토하세요.', 409);
   const imageUrl = item.uploadedImageId ? publicationImageUrl(item.uploadedImageId) : item.imageUrl;
   if (!imageUrl) fail('게시할 이미지를 업로드하고 저장하세요.');
-  item.status = 'publishing'; item.error = undefined; item.instagramUserId = config.userId;
+  item.status = 'publishing'; item.error = undefined; item.instagramSkipped = undefined; item.instagramUserId = config.userId;
   await save(item);
   let publishAttempted = false;
   try {
@@ -191,8 +206,6 @@ setAutomationRunner(async ({ photoId, text }, signal) => {
   const id = photoId;
   await setAutomationEvent(id);
   return await locked(id, async () => {
-    const config = await getInstagramConnection();
-    if (!config) fail('인스타그램 계정을 연결한 뒤 수신을 재개하세요.', 503);
     const level = (await piezoStatus()).level;
     const item: Publication = { input: { ...source.input, sensors: { ...source.input.sensors, piezoLevel: level } },
       prompt: DEFAULT_COVER_CONTEXT, transcript: text, piezoLevel: level, status: 'received', caption: '', imageUrl: '', revision: 0 };
@@ -202,9 +215,13 @@ setAutomationRunner(async ({ photoId, text }, signal) => {
     signal.throwIfAborted();
     if (item.status === 'skipped') return 'skipped' as const;
     if (item.status !== 'draft' || item.cards?.length !== 3) throw Error(item.error || '카드뉴스 생성 실패');
-    await publish(item, config.userId, signal);
+    const instagramPublishing = await instagramPublishingStatus();
+    const config = instagramPublishing.enabled ? await getInstagramConnection() : null;
+    if (instagramPublishing.enabled && !config) return;
+    await publish(item, config?.userId, signal);
+    // Instagram is best-effort. The generated article has already been saved to
+    // the newspaper, so remote failures must not halt subsequent observations.
     if (item.status as string === 'unknown') return 'skipped' as const;
-    if (item.status as string !== 'published') throw Error(item.error || '게시 상태를 확인하세요.');
   });
 });
 async function body(req: IncomingMessage): Promise<any> {
@@ -234,7 +251,7 @@ export async function publicationRoutes(req: IncomingMessage, res: ServerRespons
     else { res.writeHead(200); res.end(JSON.stringify(publicationStatus(item))); }
     return true;
   }
-  if (path !== '/api/publishing/piezo' && path !== '/api/piezo' && !path.startsWith('/api/received-photos') && !path.startsWith('/api/observations') && path !== '/api/publishing/status' && path !== '/api/publishing/restart' && path !== '/api/creations') return false;
+  if (path !== '/api/publishing/piezo' && path !== '/api/publishing/instagram' && path !== '/api/piezo' && !path.startsWith('/api/received-photos') && !path.startsWith('/api/observations') && path !== '/api/publishing/status' && path !== '/api/publishing/restart' && path !== '/api/creations') return false;
   const send = (data: unknown, status = 200) => { res.writeHead(status); res.end(JSON.stringify(data)); return true; };
   if (req.method === 'GET' && path === '/api/received-photos') {
     await mkdir(root, { recursive: true });
@@ -257,6 +274,11 @@ export async function publicationRoutes(req: IncomingMessage, res: ServerRespons
   if (req.method === 'POST' && path === '/api/publishing/piezo') {
     const value = await body(req);
     return send(await setPiezoLevel(value.piezoLevel));
+  }
+  if (path === '/api/publishing/instagram') {
+    if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); fail('POST 요청이 필요합니다.', 405); }
+    const value = await body(req);
+    return send(await setInstagramPublishing(value.enabled));
   }
   if (req.method === 'POST' && path === '/api/piezo') {
     const value = await body(req);
@@ -292,7 +314,7 @@ export async function publicationRoutes(req: IncomingMessage, res: ServerRespons
           if (!card || typeof card.title !== 'string' || card.title.length > 500 || typeof card.body !== 'string' || card.body.length > 4000) fail('카드 내용이 올바르지 않습니다.');
           cards.push({ title: card.title, body: card.body, imageId: await savePublicationImage(card.image) });
         }
-        const item: Publication = { input: { eventId: `create-${randomUUID()}`, capturedAt: new Date().toISOString(), sensors: { piezoLevel: value.piezoLevel ?? 0 } }, status: 'draft', revision: 0, caption: value.caption, imageUrl: '', cards, uploadedImageId: cards[0].imageId, piezoLevel: value.piezoLevel ?? 0 };
+        const item: Publication = { input: { eventId: `create-${randomUUID()}`, capturedAt: new Date().toISOString(), sensors: { piezoLevel: value.piezoLevel ?? 0 } }, status: 'draft', revision: 0, caption: value.caption, imageUrl: '', cards, uploadedImageId: cards[0].imageId, piezoLevel: value.piezoLevel ?? 0, newsPublishedAt: new Date().toISOString() };
         await save(item);
         return send(item, 201);
       } finally { creating = false; }
@@ -313,7 +335,7 @@ export async function publicationRoutes(req: IncomingMessage, res: ServerRespons
   }
   if (path === '/api/publishing/status') {
     if (req.method === 'POST') return send({ automation: await resumeAutomation() });
-    return send({ ...await instagramStatus(), piezo: await piezoStatus(), automation: await automationStatus() });
+    return send({ ...await instagramStatus(), instagramPublishing: await instagramPublishingStatus(), piezo: await piezoStatus(), automation: await automationStatus() });
   }
   if (req.method === 'GET' && path === '/api/observations') {
     await mkdir(root, { recursive: true });

@@ -28,7 +28,7 @@ const port = (value: string | undefined, fallback: number) =>
     ? +value
     : fallback;
 const API_PORT = port(process.env.API_PORT, 3002);
-const WHISPER = `http://127.0.0.1:${port(process.env.WHISPER_PORT, 8080)}`;
+const WHISPER = process.env.WHISPER_URL || `http://127.0.0.1:${port(process.env.WHISPER_PORT, 8080)}`;
 
 async function localFetch(url: string, init?: RequestInit, ms = 5000) {
   return fetch(url, {
@@ -176,7 +176,7 @@ const server = createServer(async (req, res) => {
       await publicationRoutes(req, res, path);
       return;
     }
-    const publishingRequest = path === "/api/publishing/piezo" || path === "/api/publishing/restart" || path === "/api/publishing/status" || path === "/api/creations" ||
+    const publishingRequest = path === "/api/publishing/piezo" || path === "/api/publishing/instagram" || path === "/api/publishing/restart" || path === "/api/publishing/status" || path === "/api/creations" ||
       /^\/api\/observations(?:\/[a-zA-Z0-9_-]{1,100}(?:\/(?:generate|publish|image|cards\/[0-3]))?)?$/.test(path) ||
       ["/api/instagram/connect", "/api/instagram/complete", "/api/instagram/account"].includes(path);
     if (publicRequest && publishingRequest) {

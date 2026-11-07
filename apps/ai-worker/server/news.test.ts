@@ -50,6 +50,11 @@ test('public news exposes published and uncertain text and images, with stable a
       await writeFile(join(dir, 'one.json'), JSON.stringify({ ...item, status }));
       assert.deepEqual(await (await get()).json(), { items: [] });
     }
+    await writeFile(join(dir, 'one.json'), JSON.stringify({ ...item, status: 'draft', newsPublishedAt: '2026-11-06T10:30:00Z' }));
+    const newspaperOnly = await (await get()).json();
+    assert.equal(newspaperOnly.items[0].id, 'one');
+    assert.equal(newspaperOnly.items[0].publishedAt, '2026-11-06T10:30:00Z');
+    assert.equal((await get(newspaperOnly.items[0].images[0])).status, 200);
     await writeFile(join(dir, 'one.json'), JSON.stringify({ ...item, status: 'unknown' }));
     const uncertain = await (await get()).json();
     assert.equal(uncertain.items[0].id, 'one');

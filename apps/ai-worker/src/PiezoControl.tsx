@@ -1,7 +1,7 @@
 import { PIEZO_LABELS, type PiezoLevel } from './publishing';
 export function PiezoControl({ value, onChange, disabled = false }: { value: PiezoLevel; onChange: (value: PiezoLevel) => void; disabled?: boolean }) {
   return <fieldset className="piezo-control" disabled={disabled}>
-    <legend>피에조 단계 설정</legend>
+    <legend>어그로 단계 설정</legend>
     <div className="piezo-options">{PIEZO_LABELS.map((label, level) => <label key={level} className={value === level ? 'selected' : ''}>
       <input type="radio" name="piezo-level" value={level} checked={value === level} onChange={() => onChange(level as PiezoLevel)} />
       <strong>{level}단계</strong><span>{label}</span>

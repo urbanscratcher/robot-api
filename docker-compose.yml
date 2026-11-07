@@ -42,10 +42,32 @@ services:
     environment:
       API_HOST: 0.0.0.0
       API_PORT: 3002
+      WHISPER_URL: http://whisper:8080
       ALLOWED_ORIGINS: ${AI_ALLOWED_ORIGINS:-https://n.joun.cc}
       ADMIN_ORIGINS: ${AI_ADMIN_ORIGINS:-https://n.joun.cc}
     volumes:
       - /mnt/data/cam/ai-worker:/app/data
+    restart: unless-stopped
+    depends_on:
+      whisper:
+        condition: service_healthy
+
+  whisper:
+    image: ghcr.io/ggml-org/whisper.cpp:main
+    command:
+      - >-
+        find /models/ggml-base.bin -size +100M 2>/dev/null | grep -q . || /app/models/download-ggml-model.sh base /models;
+        exec whisper-server --host 0.0.0.0 --port 8080 --language ko --model /models/ggml-base.bin
+    volumes:
+      - /mnt/data/cam/whisper/models:/models
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     restart: unless-stopped
 
 

@@ -10,7 +10,7 @@ import { receiveTranscript, latestTranscript, receivedTranscripts } from './tran
 
 test('final transcripts pair only by interaction ID and preserve idempotent receipts', async t => {
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
-  const elapse = async () => { t.mock.timers.tick(10_000); await delay(30); };
+  const elapse = async () => { t.mock.timers.tick(30_000); await delay(30); };
   const root = await mkdtemp(join(tmpdir(), 'transcripts-'));
   const previous = { token: process.env.OBSERVATION_TOKEN, root: process.env.TRANSCRIPTS_DATA_DIR };
   process.env.OBSERVATION_TOKEN = 'test-intake-token';

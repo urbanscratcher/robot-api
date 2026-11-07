@@ -5,6 +5,7 @@ import { AUTO_CAPTURE, OBSERVATION_URL, VISIT } from './config'
 import { usePersonDetector } from './hooks/usePersonDetector'
 import { sendObservation, sendTranscript } from './observation'
 import { startListening, type SpeechSession } from './speech'
+import { startAudioTranscription, type AudioTranscriptionSession } from './audio-transcription'
 import {
   isArticleGenerating,
   isInstagramPublishing,
@@ -333,6 +334,8 @@ export default function App() {
     setVisit({ phase: 'running', photos: 0, until: recordingStarted.getTime() + VISIT.maxListenMs })
     let speech: SpeechSession | null = null
     try { speech = startListening('ko-KR') } catch { speech = null }
+    let audio: AudioTranscriptionSession | null = null
+    try { audio = await startAudioTranscription() } catch { audio = null }
 
     let photosSent = 0
     const publicationEventIds: string[] = []
@@ -368,11 +371,15 @@ export default function App() {
     const speechJob = (async () => {
       await sleep(Math.max(0, recordingStarted.getTime() + VISIT.maxListenMs - Date.now()))
       const recordingEndedAt = new Date().toISOString()
-      const text = speech ? await speech.stop() : ''
+      const [whisperText, browserText] = await Promise.all([
+        audio ? audio.stop() : Promise.resolve(''),
+        speech ? speech.stop() : Promise.resolve(''),
+      ])
+      const text = whisperText || browserText
 
       let result: string
-      if (!speech) result = '음성 인식 미지원'
-      else if (!text) result = speech.lastError() === 'not-allowed' ? '마이크 거부' : '말소리 없음'
+      if (!audio && !speech) result = '음성 인식 미지원'
+      else if (!text) result = speech?.lastError() === 'not-allowed' ? '마이크 거부' : audio?.lastError() ? '음성 변환 실패' : '말소리 없음'
       else {
         try {
           const response = await sendTranscript({

@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { PiezoControl } from './PiezoControl';
 import { ClaudeToggle } from './ClaudeToggle';
 import { ReceivedTranscripts } from './ReceivedTranscripts';
+import { RobotControl } from './RobotControl';
 import { PIEZO_LABELS, type Publication, type PiezoLevel } from './publishing';
 import './publishing.css';
 
 type Automation = { status: 'waiting' | 'processing' | 'halted'; accepting: boolean; hasPhoto: boolean; hasTranscript: boolean; eventId: string | null; error: string | null };
-type Status = { configured: boolean; oauthReady: boolean; expired: boolean; mode: 'system-user' | 'unified' | 'instagram'; redirectUri: string; selectedId: string | null; accounts: { id: string; username: string }[]; automation: Automation; piezo: { level: PiezoLevel; expiresAt: number | null } };
+type Status = { configured: boolean; oauthReady: boolean; expired: boolean; mode: 'system-user' | 'unified' | 'instagram'; redirectUri: string; selectedId: string | null; accounts: { id: string; username: string }[]; instagramPublishing: { enabled: boolean }; automation: Automation; piezo: { level: PiezoLevel; expiresAt: number | null } };
 export default function CardNewsApp() {
   const adminPanel = useRef<HTMLDetailsElement>(null);
   const [status, setStatus] = useState<Status | null>(null);
@@ -105,21 +106,32 @@ export default function CardNewsApp() {
   const account = status?.accounts.find(account => account.id === status.selectedId);
   const level = status?.piezo.level ?? 0;
   const labels = { received: '수신 완료', generating: '카드뉴스 생성 중', draft: '게시 준비 중', publishing: '인스타그램 게시 중', published: '게시 완료', failed: '생성 실패', unknown: '게시 확인 필요', skipped: '초점·흔들림으로 스킵' };
+  const instagramFailed = publication?.status === 'draft' && Boolean(publication.error) && Boolean(publication.newsPublishedAt);
   return <main className="publishing-shell card-preview-shell">
-    <h1>파파라치 모니터</h1>
-    <p>{status ? `피에조 ${level}단계 · ${PIEZO_LABELS[level]}` : '피에조 상태 확인 전'}</p>
-    <section aria-label="자동 게시 상태">
+    <header className="monitor-hero">
+      <p className="monitor-eyebrow">PAPARAZZI CONTROL CENTER</p>
+      <h1>파파라치 모니터</h1>
+      <p>{status ? `어그로 ${level}단계 · ${PIEZO_LABELS[level]}` : '어그로 상태 확인 전'}</p>
+    </header>
+    <section className="monitor-status-panel" aria-label="자동 게시 상태">
       <div className="monitor-status-heading">
         <h2>자동 게시 상태</h2>
         {authorized && <button type="button" disabled={working || !status} aria-busy={restarting} onClick={() => void restart()}>{restarting ? '중단 후 재시작 중…' : '전체 중단 · 새로 시작'}</button>}
       </div>
-      <p role="status">{!automation ? (authorized === false ? '관리자 인증 후 상태를 볼 수 있습니다.' : '서버 상태 확인 중…') : automation.status === 'halted' ? '자동 처리 중지 · 확인 필요' : automation.status === 'processing' ? (publication?.phase || (publication ? labels[publication.status] : '생성 준비 중')) : `수신 대기 · 사진 ${automation.hasPhoto ? '수신됨' : '대기'} · 텍스트 ${automation.hasTranscript ? '수신됨' : '대기'}`}</p>
+      {automation?.status === 'waiting' && !publication?.instagramSkipped && !instagramFailed && publication?.status !== 'unknown' && publication?.status !== 'published' ? <div className="monitor-waiting-status" role="status">
+        <strong><span className="status-pulse" aria-hidden="true" />수신 대기</strong>
+        <div className="monitor-signal-grid">
+          <span className="monitor-signal is-active"><small>시스템</small>수신 대기</span>
+          <span className={`monitor-signal ${automation.hasPhoto ? 'is-received' : ''}`}><small>사진</small>{automation.hasPhoto ? '수신됨' : '대기'}</span>
+          <span className={`monitor-signal ${automation.hasTranscript ? 'is-received' : ''}`}><small>텍스트</small>{automation.hasTranscript ? '수신됨' : '대기'}</span>
+        </div>
+      </div> : <p className="monitor-primary-status" role="status">{!automation ? (authorized === false ? '관리자 인증 후 상태를 볼 수 있습니다.' : '서버 상태 확인 중…') : automation.status === 'halted' ? '자동 처리 중지 · 확인 필요' : automation.status === 'processing' ? (publication?.phase || (publication ? labels[publication.status] : '생성 준비 중')) : publication?.instagramSkipped ? '뉴스 사이트 게시 완료 · 인스타그램 게시 꺼짐' : instagramFailed ? '사이트 게시 완료 · 인스타그램 게시 실패' : publication?.status === 'unknown' ? '인스타그램 게시 여부 확인 필요' : '인스타그램 게시 완료'}</p>}
       {automation?.status === 'waiting' && automation.hasPhoto && <p role="status">사진 수신 완료 · 10초 대기 후 자동 생성합니다. {automation.hasTranscript ? '텍스트 수신 완료' : '텍스트를 기다리는 중이며, 없으면 사진만 사용합니다.'}</p>}
-      <p className="setup-note">사진 수신 후 10초가 지나면 카드뉴스를 생성해 자동 게시합니다. 그때까지 도착한 같은 촬영 ID의 텍스트를 함께 쓰고, 없으면 사진만 사용합니다.</p>
-      {authorized && <p className="setup-note">새로 시작하면 진행 중인 자동 처리를 중단하고 수신 텍스트 기록과 대기 입력을 모두 초기화합니다. 이미 게시된 콘텐츠와 계정 연결 설정은 유지됩니다.</p>}
       {message && <p role="status">{message}</p>}
       {adminError && <p className="publication-error" role="alert">{adminError}</p>}
       {(error || automation?.error) && <p className="publication-error" role="alert">{error || automation?.error}</p>}
+      {instagramFailed && <p className="publication-error" role="alert">인스타그램에는 게시되지 않았습니다. {publication.error}</p>}
+      {publication?.status === 'unknown' && <p className="publication-error" role="alert">인스타그램에 게시 요청은 전달됐지만 결과를 확인하지 못했습니다. 인스타그램 앱에서 직접 확인하세요. 중복 방지를 위해 자동 재게시하지 않습니다.</p>}
       {automation?.status === 'halted' && <a href="#monitor-admin" onClick={() => { if (adminPanel.current) adminPanel.current.open = true; }}>관리자 영역에서 게시 여부 확인·수신 재개</a>}
       {publication?.status === 'skipped' && <p>사진의 초점이나 흔들림으로 피사체를 알아보기 어려워 카드뉴스를 만들지 않았습니다. 다음 사진을 기다립니다.</p>}
       {publication?.status === 'published' && <p>인스타그램과 사이트 10곳에 게시했습니다. · 게시물 ID: {publication.mediaId}</p>}
@@ -135,13 +147,20 @@ export default function CardNewsApp() {
       <summary>관리자</summary>
       <ClaudeToggle onAccessChange={setAuthorized} />
       {status && <>
+        <RobotControl />
         <PiezoControl value={level} disabled={working} onChange={nextLevel => void act(async () => {
           const piezo = await request<Status['piezo']>('/api/publishing/piezo', { piezoLevel: nextLevel });
           setStatus(current => current ? { ...current, piezo } : current);
-          setMessage(`피에조 ${piezo.level}단계를 적용했습니다.`);
+          setMessage(`어그로 ${piezo.level}단계를 적용했습니다.`);
         })} />
         <section className="instagram-connection" aria-label="인스타그램 연결">
           <div><h2>인스타그램 계정</h2><p>{status.mode === 'system-user' && status.configured ? `서버 시작 설정으로 연결됨 · 계정 ID: ${status.selectedId}` : status.configured ? (account ? `@${account.username} 계정에 자동 게시합니다.` : `연결된 계정 ID: ${status.selectedId}`) : status.expired ? '연결이 만료되었습니다. 다시 로그인하세요.' : '자동 게시할 계정을 연결하세요.'}</p></div>
+          <div><h2>Instagram 자동 게시</h2><p>{status.instagramPublishing.enabled ? '켜짐 · 뉴스 사이트 게시 후 Instagram에도 게시합니다.' : '꺼짐 · 뉴스 사이트에만 게시합니다.'}</p></div>
+          <button type="button" disabled={working || automation?.status === 'processing'} onClick={() => void act(async () => {
+            const instagramPublishing = await request<Status['instagramPublishing']>('/api/publishing/instagram', { enabled: !status.instagramPublishing.enabled });
+            setStatus(current => current ? { ...current, instagramPublishing } : current);
+            setMessage(instagramPublishing.enabled ? 'Instagram 자동 게시를 켰습니다.' : 'Instagram 자동 게시를 껐습니다. 뉴스 사이트 게시만 계속됩니다.');
+          })}>{status.instagramPublishing.enabled ? '자동 게시 끄기' : '자동 게시 켜기'}</button>
           {status.mode !== 'system-user' && <>
             <button disabled={working || automation?.status === 'processing' || !status.oauthReady} onClick={() => {
               const popup = window.open('about:blank', 'instagram-oauth', 'popup,width=720,height=820');

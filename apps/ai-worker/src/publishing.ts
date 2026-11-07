@@ -1,5 +1,5 @@
 export type PiezoLevel = 0 | 1 | 2;
-export const PIEZO_LABELS = ["어그로성 기자", "조금 착하게", "완전 아첨"] as const;
+export const PIEZO_LABELS = ["어그로", "약하게 때리기", "강하게 맞았다"] as const;
 export type NewsCard = { imageId: string; title: string; body: string };
 
 export type Observation = {
@@ -22,6 +22,8 @@ export type Publication = {
   containerId?: string;
   mediaId?: string;
   publishedAt?: string;
+  newsPublishedAt?: string;
+  instagramSkipped?: boolean;
   instagramUserId?: string;
   prompt?: string;
   piezoLevel?: PiezoLevel;
