@@ -64,12 +64,12 @@ test('Unified OAuth: browser binding, one-time callback, encrypted grant, accoun
     assert.equal((await call('/api/instagram/complete', { cookie: flow.cookie })).data.status, 'pending');
     const received = await callback(flow.state); assert.equal(received.status, 200);
     assert.doesNotMatch(received.data, /test-code|private-system-token/);
-    assert.ok(received.data.includes('href="http://localhost:5174/#monitor-admin"'));
+    assert.ok(received.data.includes(`instagram_flow=${flow.state.replace('.', '%2E')}`) || received.data.includes(`instagram_flow=${flow.state}`));
     assert.equal(exchangeCount, 0, 'public callback must never exchange or expose tokens');
     assert.equal((await call('/api/instagram/complete')).data.status, 'idle');
     const forged = flow.cookie.split('.')[0] + '.' + '0'.repeat(64);
     assert.equal((await call('/api/instagram/complete', { cookie: forged })).status, 403);
-    assert.equal((await call('/api/instagram/complete', { cookie: flow.cookie })).data.status, 'connected');
+    assert.equal((await call('/api/instagram/complete', { body: { flow: flow.state } })).data.status, 'connected');
     assert.equal((await callback(flow.state)).status, 400);
     assert.equal((await call('/api/instagram/complete', { cookie: flow.cookie })).data.status, 'idle');
     assert.equal(exchangeCount, 1);

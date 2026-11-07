@@ -29,8 +29,15 @@ export default function CardNewsApp() {
     catch (error) { setAdminError(error instanceof Error ? error.message : '요청에 실패했습니다.'); }
     finally { setWorking(false); }
   }
+  function returnedInstagramFlow() { return new URLSearchParams(location.search).get('instagram_flow'); }
+  function clearReturnedInstagramFlow() {
+    const url = new URL(location.href); url.searchParams.delete('instagram_flow');
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }
   async function completeConnection() {
-    const result = await request<{ status: string }>('/api/instagram/complete', {});
+    const flow = returnedInstagramFlow();
+    const result = await request<{ status: string }>('/api/instagram/complete', flow ? { flow } : {});
+    if (result.status !== 'pending') clearReturnedInstagramFlow();
     if (result.status === 'connected') setMessage('인스타그램 연결을 완료했습니다.');
     if (result.status === 'pending') setMessage('인스타그램 로그인을 마친 뒤 연결 확인을 눌러주세요.');
   }
@@ -49,7 +56,9 @@ export default function CardNewsApp() {
   useEffect(() => {
     if (!authorized) return;
     let active = true;
-    void request<{ status: string }>('/api/instagram/complete', {}).then(result => {
+    const flow = returnedInstagramFlow();
+    void request<{ status: string }>('/api/instagram/complete', flow ? { flow } : {}).then(result => {
+      if (result.status !== 'pending') clearReturnedInstagramFlow();
       if (active && result.status === 'connected') { setMessage('인스타그램 연결을 완료했습니다.'); setRefreshTick(value => value + 1); }
     }).catch(error => { if (active) setAdminError(error.message); });
     return () => { active = false; };

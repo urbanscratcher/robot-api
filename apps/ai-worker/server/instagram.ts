@@ -14,7 +14,7 @@ const equal = (a: string, b: string) => a.length === b.length && timingSafeEqual
 type Account = { id: string; username: string };
 export type InstagramConnection = { token: string; userId: string; version: string; host: 'graph.facebook.com' | 'graph.instagram.com'; secret?: string };
 type Grant = { token: string; accounts: Account[]; selectedId: string | null; expiresAt: number | null; fingerprint: string };
-type Flow = { bindingHash: string; createdAt: number; fingerprint: string; returnTo: string; code?: string; denied?: boolean };
+type Flow = { bindingHash: string; completionHash?: string; createdAt: number; fingerprint: string; returnTo: string; code?: string; denied?: boolean };
 const flowFile = (state: string, stage: string) => join(root, `${state}.${stage}.json`);
 export function oauthConfig() {
   const { META_APP_ID: appId, META_APP_SECRET: secret, INSTAGRAM_CONFIG_ID: configId, INSTAGRAM_API_VERSION: version } = process.env;
@@ -102,20 +102,25 @@ function checkFlow(flow: Flow) {
   if (!config || flow.fingerprint !== config.fingerprint || Date.now() - flow.createdAt > ttl) fail('로그인 요청이 만료되었거나 설정이 변경되었습니다. 검토 화면에서 다시 연결하세요.');
   return config;
 }
-function callbackPage(res: ServerResponse, returnTo: string, denied: boolean) {
+function callbackPage(res: ServerResponse, flow: Flow, state: string, completion: string, denied: boolean) {
+  const returnUrl = new URL(flow.returnTo);
+  returnUrl.searchParams.set('instagram_flow', `${state}.${completion}`);
+  returnUrl.hash = 'monitor-admin';
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
   res.writeHead(200);
-  res.end(`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>인스타그램 연결</title><h1>${denied ? '로그인이 취소되었습니다.' : '로그인 응답을 받았습니다.'}</h1><p>시작한 기기의 모니터로 돌아가 연결을 완료하세요.</p><a href="${returnTo}">모니터로 돌아가기</a></html>`);
+  res.end(`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>인스타그램 연결</title><h1>${denied ? '로그인이 취소되었습니다.' : '로그인 응답을 받았습니다.'}</h1><p>시작한 기기의 모니터로 돌아가 연결을 완료하세요.</p><a href="${returnUrl.toString()}">모니터로 돌아가기</a></html>`);
 }
 export async function instagramRoutes(req: IncomingMessage, res: ServerResponse, publicRequest = false) {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (!url.pathname.startsWith('/api/instagram/')) return false;
   const send = (value: unknown) => { res.writeHead(200); res.end(JSON.stringify(value)); return true; };
   if (url.pathname === callbackPath && req.method === 'GET') {
-    const state = url.searchParams.get('state');
-    if (!state || !/^[a-f0-9]{64}$/.test(state)) fail('유효하지 않은 로그인 응답입니다.');
+    const stateValue = url.searchParams.get('state') ?? '';
+    const stateParts = /^([a-f0-9]{64})(?:\.([a-f0-9]{64}))?$/.exec(stateValue);
+    if (!stateParts) fail('유효하지 않은 로그인 응답입니다.');
+    const state = stateParts[1]; const completion = stateParts[2] ?? '';
     const flow = await readFlow(state, 'pending');
     if (!flow) fail('이미 처리했거나 유효하지 않은 로그인 응답입니다.');
     checkFlow(flow);
@@ -127,7 +132,9 @@ export async function instagramRoutes(req: IncomingMessage, res: ServerResponse,
     try { await rename(flowFile(state, 'pending'), claim); } catch { fail('이미 처리한 로그인 응답입니다.', 409); }
     try { await writeFile(flowFile(state, 'returned'), JSON.stringify({ ...flow, ...(denied ? { denied: true } : { code }) }), { mode: 0o600, flag: 'wx' }); }
     finally { await unlink(claim).catch(() => {}); }
-    callbackPage(res, flow.returnTo, denied); return true;
+    // New flows carry the completion secret in the OAuth state suffix. Keep old
+    // pending flows working through their browser cookie during rolling deploys.
+    callbackPage(res, flow, state, completion, denied); return true;
   }
   if (publicRequest) {
     if (!isAdmin(req)) fail('관리자 인증 후 인스타그램 연결을 관리할 수 있습니다.', 403);
@@ -138,7 +145,7 @@ export async function instagramRoutes(req: IncomingMessage, res: ServerResponse,
   if (url.pathname === '/api/instagram/connect') {
     const config = oauthConfig(); if (!config) fail('META_APP_ID·META_APP_SECRET·INSTAGRAM_CONFIG_ID·INSTAGRAM_API_VERSION 설정을 확인하세요.', 503);
     if (![...(publicRequest ? adminOrigins() : ['http://localhost:5174', 'http://127.0.0.1:5174'])].includes(req.headers.origin ?? '')) fail('모니터의 관리자 영역에서 연결을 시작하세요.', 403);
-    const state = randomBytes(32).toString('hex'); const binding = randomBytes(32).toString('hex');
+    const state = randomBytes(32).toString('hex'); const binding = randomBytes(32).toString('hex'); const completion = randomBytes(32).toString('hex');
     await mkdir(root, { recursive: true, mode: 0o700 });
     for (const name of await readdir(root)) {
       if (!/^[a-f0-9]{64}\.(pending|returned)\.json$/.test(name)) continue;
@@ -149,25 +156,30 @@ export async function instagramRoutes(req: IncomingMessage, res: ServerResponse,
     }
     const old = flowCookie(req);
     if (old) { await unlink(flowFile(old.state, 'pending')).catch(() => {}); await unlink(flowFile(old.state, 'returned')).catch(() => {}); }
-    await writeFile(flowFile(state, 'pending'), JSON.stringify({ bindingHash: digest(binding), createdAt: Date.now(), fingerprint: config.fingerprint, returnTo: `${req.headers.origin}${publicRequest ? '/admin/' : '/'}#monitor-admin` } satisfies Flow), { mode: 0o600, flag: 'wx' });
+    await writeFile(flowFile(state, 'pending'), JSON.stringify({ bindingHash: digest(binding), completionHash: digest(completion), createdAt: Date.now(), fingerprint: config.fingerprint, returnTo: `${req.headers.origin}${publicRequest ? '/admin/' : '/'}` } satisfies Flow), { mode: 0o600, flag: 'wx' });
     res.setHeader('Set-Cookie', `${cookieName}=${state}.${binding}; Path=/api/instagram; HttpOnly; SameSite=Lax; Max-Age=600${publicRequest ? '; Secure' : ''}`);
     const login = new URL(`https://www.facebook.com/${config.version}/dialog/oauth`);
-    login.search = new URLSearchParams({ client_id: config.appId, config_id: config.configId, redirect_uri: config.redirectUri, response_type: 'code', override_default_response_type: 'true', state }).toString();
+    login.search = new URLSearchParams({ client_id: config.appId, config_id: config.configId, redirect_uri: config.redirectUri, response_type: 'code', override_default_response_type: 'true', state: `${state}.${completion}` }).toString();
     return send({ url: login.toString() });
   }
   if (url.pathname === '/api/instagram/complete') {
-    const cookie = flowCookie(req); if (!cookie) return send({ status: 'idle' });
-    const flow = await readFlow(cookie.state, 'returned');
+    const cookie = flowCookie(req);
+    const fallback = typeof input.flow === 'string' && /^([a-f0-9]{64})\.([a-f0-9]{64})$/.exec(input.flow);
+    const identity = cookie ?? (fallback ? { state: fallback[1], binding: fallback[2] } : null);
+    if (!identity) return send({ status: 'idle' });
+    const flow = await readFlow(identity.state, 'returned');
     if (!flow) {
-      const pending = await readFlow(cookie.state, 'pending');
+      const pending = await readFlow(identity.state, 'pending');
       if (pending) { checkFlow(pending); return send({ status: 'pending' }); }
       clearCookie(res); return send({ status: 'idle' });
     }
-    if (!equal(flow.bindingHash, digest(cookie.binding))) fail('로그인을 시작한 브라우저에서 완료하세요.', 403);
+    const cookieMatches = !!cookie && equal(flow.bindingHash, digest(cookie.binding));
+    const fallbackMatches = !!fallback && !!flow.completionHash && equal(flow.completionHash, digest(fallback[2]));
+    if (!cookieMatches && !fallbackMatches) fail('로그인을 시작한 브라우저에서 완료하세요.', 403);
     const config = checkFlow(flow);
-    const claim = flowFile(cookie.state, 'consuming');
-    try { await rename(flowFile(cookie.state, 'returned'), claim); } catch { return send({ status: 'processing' }); }
-    clearCookie(res);
+    const claim = flowFile(identity.state, 'consuming');
+    try { await rename(flowFile(identity.state, 'returned'), claim); } catch { return send({ status: 'processing' }); }
+    if (cookie) clearCookie(res);
     try {
       if (flow.denied) fail('인스타그램 로그인을 취소했습니다. 다시 연결할 수 있습니다.');
       let response: Response;
