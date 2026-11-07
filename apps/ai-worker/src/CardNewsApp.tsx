@@ -41,6 +41,29 @@ export default function CardNewsApp() {
     if (result.status === 'connected') setMessage('인스타그램 연결을 완료했습니다.');
     if (result.status === 'pending') setMessage('인스타그램 로그인을 마친 뒤 연결 확인을 눌러주세요.');
   }
+  async function connectInstagram(popup: Window | null) {
+    if (!popup) throw Error('새 탭을 열 수 없습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도하세요.');
+    try {
+      const login = await request<{ url: string }>('/api/instagram/connect', {});
+      popup.location.replace(login.url);
+      setMessage('새 탭에서 인스타그램 인증을 완료하세요. 이 화면은 그대로 두면 자동으로 연결됩니다.');
+      const deadline = Date.now() + 10 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const result = await request<{ status: string }>('/api/instagram/complete', {});
+        if (result.status === 'connected') {
+          popup.close();
+          setMessage('인스타그램 연결을 완료했습니다.');
+          return;
+        }
+        if (result.status === 'idle' && popup.closed) throw Error('인스타그램 인증이 완료되지 않았습니다. 다시 연결해 주세요.');
+      }
+      throw Error('인스타그램 인증 시간이 만료되었습니다. 다시 연결해 주세요.');
+    } catch (error) {
+      if (!popup.closed) popup.close();
+      throw error;
+    }
+  }
   async function restart() {
     setRestarting(true);
     try {
@@ -119,10 +142,10 @@ export default function CardNewsApp() {
         })} />
         <section className="instagram-connection" aria-label="인스타그램 연결">
           <div><h2>인스타그램 계정</h2><p>{status.configured ? (account ? `@${account.username} 계정에 자동 게시합니다.` : `연결된 계정 ID: ${status.selectedId}`) : status.expired ? '연결이 만료되었습니다. 다시 로그인하세요.' : '자동 게시할 계정을 연결하세요.'}</p></div>
-          <button disabled={working || automation?.status === 'processing' || !status.oauthReady} onClick={() => void act(async () => {
-            const login = await request<{ url: string }>('/api/instagram/connect', {});
-            window.location.assign(login.url);
-          })}>{status.configured ? '인스타그램 다시 연결' : '인스타그램 연결'}</button>
+          <button disabled={working || automation?.status === 'processing' || !status.oauthReady} onClick={() => {
+            const popup = window.open('about:blank', 'instagram-oauth', 'popup,width=720,height=820');
+            void act(() => connectInstagram(popup));
+          }}>{status.configured ? '인스타그램 다시 연결' : '인스타그램 연결'}</button>
           <button disabled={working || automation?.status === 'processing'} onClick={() => void act(completeConnection)}>연결 확인</button>
           {!status.oauthReady && <p className="setup-note">서버의 Meta 앱 연결 설정이 필요합니다.</p>}
           <details><summary>연결 설정 정보</summary><p>Meta에 등록할 Redirect URL</p><code>{status.redirectUri}</code></details>
